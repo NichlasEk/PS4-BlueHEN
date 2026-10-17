@@ -85,6 +85,8 @@ The package also contains three system modules (`libc.prx`, `libSceFios2.prx` an
 
 Developed by **X-F1REBALL-X**. The equalizer comes from [HearBridge PS5](https://github.com/X-F1REBALL-X/HearBridge-PS5). Built with the OpenOrbis PS4 toolchain, the PS4 payload SDK and the GoldHEN plugins SDK. The system modules in the package belong to the OpenOrbis toolchain and are not covered by this project's license.
 
+Big thanks to SiSTR0 for creating GoldHEN. HearBridge would not be possible without it.
+
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
