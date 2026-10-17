@@ -1,0 +1,4 @@
+build/
+
+src/shell_audio_tap_prx.h
+src/shell_tap_test_prx.h

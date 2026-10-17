@@ -1,0 +1,7 @@
+HearBridge-PS4
+Copyright (c) 2026 X-F1REBALL-X
+Licensed under GPL-3.0-or-later (see LICENSE).
+
+The package built from this source also contains libc.prx, libSceFios2.prx and right.sprx.
+They come from the OpenOrbis PS4 toolchain at build time, are not part of this
+repository and are not covered by the license above.
