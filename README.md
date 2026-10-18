@@ -87,6 +87,8 @@ Developed by **X-F1REBALL-X**. The equalizer comes from [HearBridge PS5](https:/
 
 Big thanks to SiSTR0 for creating GoldHEN. HearBridge would not be possible without it.
 
+Thank you to WOOfer for the coffee.
+
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
