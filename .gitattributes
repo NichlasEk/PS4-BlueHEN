@@ -1,0 +1,8 @@
+# Keep the GitHub language bar on the plugin's own code.
+# Generated headers (built from index.html and assets by scripts/embed_*.py)
+src/webui_assets.h linguist-generated
+src/webui_html.h linguist-generated
+# Build files, helper scripts and icon artwork pages
+Makefile linguist-detectable=false
+scripts/** linguist-detectable=false
+launcher/art/** linguist-detectable=false
