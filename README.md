@@ -8,6 +8,9 @@ Developed by **X-F1REBALL-X**
 
 </div>
 
+**HearBridge family:** [PS5](https://github.com/X-F1REBALL-X/HearBridge-PS5) · [PS4](https://github.com/X-F1REBALL-X/HearBridge-PS4) · [Browser](https://github.com/X-F1REBALL-X/HearBridge-Browser)
+
+
 HearBridge PS4 plays your PS4's game audio on ordinary Bluetooth headphones, earbuds or speakers. The console cannot do this by itself, so HearBridge drives a small USB Bluetooth dongle (CSR8510) and streams to any A2DP headset. You control everything from a web page served by the console, on a phone, a PC or the PS4 browser. It is the first Bluetooth audio solution for the PS4.
 
 <img src="docs/img/showcase.png" alt="HearBridge PS4 on a phone and in a desktop browser: devices, sound, equalizer and game profiles" width="100%">
