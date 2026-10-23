@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HearBridge PS4 guide</title>
+<meta name="description" content="Bluetooth audio for a jailbroken PS4: your game sound on regular wireless headphones."/>
+<style>
+:root{--bg:#060b1a;--card:#0e1630;--edge:#1f2c52;--ink:#e6edff;--mute:#8a9acb;--pri:#a8d12c}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:16px/1.6 "Inter","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+a{color:var(--pri)}
+.in{max-width:980px;margin:0 auto;padding:0 24px}
+header{border-bottom:1px solid var(--edge);padding:16px 0;position:sticky;top:0;background:rgba(6,11,26,.92);backdrop-filter:blur(6px);z-index:2}
+header .in{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.name{font-size:1.3rem;font-weight:800}
+.ver{color:var(--mute);font-size:.9rem}
+nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+nav a{color:var(--ink);text-decoration:none;font-weight:600;font-size:.95rem}
+.banner{display:block;width:100%;border-radius:16px;border:1px solid var(--edge);margin:28px 0 8px}
+section{padding:40px 0;border-bottom:1px solid var(--edge)}
+h1{font-size:2rem;line-height:1.25;margin-bottom:12px}
+h2{font-size:1.5rem;margin-bottom:14px}
+h3{font-size:1.1rem;margin:18px 0 8px}
+p{color:var(--mute);margin-bottom:12px}
+.btn{display:inline-block;margin:8px 10px 0 0;padding:10px 18px;border-radius:999px;border:1px solid var(--edge);color:var(--ink);text-decoration:none;font-weight:700}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#04122b}
+ol,ul{margin-left:22px}
+li{margin:8px 0;color:var(--mute)}
+li b,p b,td b{color:var(--ink)}
+code{background:var(--card);border:1px solid var(--edge);border-radius:6px;padding:1px 6px;color:var(--ink);font-size:.9em;word-break:break-word}
+pre{background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:14px;overflow:auto;margin:10px 0 14px}
+pre code{border:0;padding:0;background:none}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:14px;padding:18px 20px;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0 14px;font-size:.95rem}
+th,td{border:1px solid var(--edge);padding:8px 10px;text-align:left;color:var(--mute);vertical-align:top}
+th{background:var(--card);color:var(--ink)}
+.gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+figure img{width:100%;border-radius:12px;border:1px solid var(--edge)}
+figcaption{color:var(--mute);margin-top:6px;text-align:center;font-size:.9rem}
+footer{padding:28px 0;color:var(--mute)}
+</style>
+</head>
+<body>
+<header><div class="in">
+<div><div class="name">HearBridge PS4</div><div class="ver">v1.0.0</div></div>
+<nav><a href="#what">Highlights</a><a href="#req">Requirements</a><a href="#install">Install</a><a href="#know">Good to know</a><a href="#undo">Uninstall</a></nav>
+</div></header>
+<div class="in"><img class="banner" src="../img/banner.png" alt="HearBridge PS4"/></div>
+<section><div class="in">
+<h1>Your PS4 game sound on regular Bluetooth headphones.</h1><p>HearBridge PS4 drives a small USB Bluetooth dongle (CSR8510) and streams game audio to any A2DP headset, earbuds or speaker. You control everything from a web page served by the console, on a phone, a PC or the PS4 browser.</p>
+<a class="btn pri" href="https://github.com/X-F1REBALL-X/HearBridge-PS4/releases/latest">Download v1.0.0</a><a class="btn" href="https://github.com/X-F1REBALL-X/HearBridge-PS4">Source on GitHub</a>
+</div></section>
+
+<section id="what"><div class="in">
+<h2>Highlights</h2>
+<ul>
+<li>Game audio on any Bluetooth headphones, earbuds or speakers.</li>
+<li>Scan, pair and connect from a web page. Up to 8 saved devices, with automatic reconnect.</li>
+<li>Headphone volume and a Boost slider for quiet games.</li>
+<li>Five band equalizer with presets.</li>
+<li>Game profiles: each game keeps its own sound, applied when the game starts.</li>
+<li>Switch game audio on or off, or skip games you do not want to stream.</li>
+<li>A launcher tile that sets everything up and starts the service.</li></ul>
+<figure><img src="../img/showcase.png" alt="HearBridge PS4 web page on a phone and desktop browser"/></figure>
+</div></section>
+
+<section id="req"><div class="in">
+<h2>Requirements</h2>
+<div class="gal"><div><ul>
+<li>A jailbroken PS4 running <b>GoldHEN</b>, with the <b>BinLoader server</b> and <b>Plugin Loader</b> switched on.</li>
+<li>A USB Bluetooth dongle with the <b>CSR8510</b> chip (USB ID <code>0A12:0001</code>), plugged into the PS4.</li>
+<li>Bluetooth headphones, earbuds or a speaker.</li></ul></div>
+<figure><img src="../dongle.png" alt="CSR8510 USB Bluetooth dongle" style="max-width:240px;border:0"/><figcaption>A CSR8510 dongle</figcaption></figure></div>
+</div></section>
+
+<section id="install"><div class="in">
+<h2>Install</h2>
+<ol>
+<li>Install <code>HearBridge-PS4-1.0.0.pkg</code> with GoldHEN's package installer. A <b>HearBridge</b> tile appears on the home screen.</li>
+<li>In the GoldHEN settings, turn on <b>BinLoader server</b> and <b>Plugin Loader</b>.</li>
+<li>Plug the dongle into the PS4 and open the <b>HearBridge</b> tile. It installs the game audio plugin, starts the service and shows the page address. If it asks you to turn on Plugin Loader, do that and restart the console once.</li>
+<li>Open <code>http://&lt;console-ip&gt;:8090</code> on a phone or PC on the same network, or press OK on the tile message and then X (Circle if your console is set that way) to open it in the PS4 browser.</li>
+<li>Press <b>Scan for devices</b>, put your headphones in pairing mode and tap <b>Pair</b>.</li>
+<li>Start a game. The sound plays on your headphones.</li></ol>
+<p>HearBridge keeps running after the tile closes and reconnects to your last headphones by itself. Restarting the console once after the first install is recommended, so games start smoothly.</p>
+<figure><img src="../img/splash.png" alt="HearBridge PS4 launcher"/><figcaption>The launcher</figcaption></figure>
+</div></section>
+
+<section id="know"><div class="in">
+<h2>Good to know</h2>
+<ul>
+<li>HearBridge never touches the console's built-in Bluetooth chip, so your controllers stay connected as usual.</li>
+<li>Bluetooth adds a little delay, so the headphones play slightly behind the TV.</li>
+<li>Only game audio is streamed, not the home screen sounds or voice chat.</li>
+<li>Game audio is picked up from a game's main and background music outputs at 48 kHz (almost all games). A game that opens its audio at another rate is not streamed.</li>
+<li>The launcher turns on Plugin Loader in GoldHEN's <code>config.ini</code> and adds the plugin to <code>plugins.ini</code> under <code>[default]</code>, keeping <code>config.ini.bak</code> / <code>plugins.ini.bak</code> the first time.</li>
+<li>Anyone who can open the page on your network can control it, so use a home network you trust.</li></ul>
+</div></section>
+
+<section id="undo"><div class="in">
+<h2>Uninstall</h2>
+<p>Delete the <b>HearBridge</b> app from the PS4. To remove everything, also delete <code>/data/GoldHEN/plugins/hearbridge_game_tap.prx</code>, its line in <code>/data/GoldHEN/plugins.ini</code>, the folders <code>/data/hearbridge</code> and <code>/data/GoldHEN/hearbridge</code>, and the files <code>hearbridge_skip.txt</code> and <code>hearbridge_tap_off</code> in <code>/data/GoldHEN</code>. Restart the console to stop a running service.</p>
+</div></section>
+
+<footer><div class="in">Developed by <a href="https://github.com/X-F1REBALL-X">X-F1REBALL-X</a>. Source: <a href="https://github.com/X-F1REBALL-X/HearBridge-PS4">github.com/X-F1REBALL-X/HearBridge-PS4</a>.</div></footer>
+</body>
+</html>
