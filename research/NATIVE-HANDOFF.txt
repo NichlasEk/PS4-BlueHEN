@@ -1,0 +1,110 @@
+BlueHEN native Bluetooth and microphone bring-up — 2026-10-24
+
+USER REQUIREMENTS
+PS4 firmware 9.60. Use the built-in Bluetooth radio, with no USB dongle.
+Target generic A2DP Sink playback (user wrote ADP3, interpreted as A2DP).
+Microphone is required too; the intended integration is conservatively treated
+as PS4 chat, not merely recording into our own homebrew application.
+Exact headset, console model, current IP and GoldHEN version remain unknown.
+
+CORRECTED DIRECTION
+The initial dongle assumption was explicitly rejected by the user. The CSR
+0a12:0001 device observed on the workstation is irrelevant to the target path.
+Do not ask the user to buy/move a dongle or deliver upstream HearBridge as
+though it fulfills this request. This repo is a HearBridge fork for reusable
+audio/protocol work, not evidence that its USB transport works internally.
+
+IMPLEMENTED
+research/native-probe/probe.c is a bounded inventory payload:
+- Firmware information; refuses further inventory unless version is 9.60.
+- Current-process module names and named export resolution only.
+- Candidate device/library names in /dev, /system/common/lib, /system/priv/lib.
+- Append log: /data/bluehen/native-probe.log, fallback /user/data/bluehen/.
+- No device opens, ioctl, scan, pairing, Bluetooth reset, AudioIn call, PRX
+  injection, module load or kernel patches in the probe itself.
+- Only creates a log directory and appends the report. SDK startup/loader
+  behavior is separate; this is not an assurance about an untested loader.
+- Does not inspect modules in ShellCore, ShellUI or other processes. Missing
+  exports in this inventory do not prove system-wide absence.
+
+BUILD AND VERIFICATION
+Use ps4-payload-dev/sdk v0.9, not the older Scene-Collective/libPS4 SDK.
+SDK archive SHA-256:
+3190e88255a72161e5ce2f22a8ae8f638a2c5a9d1ff1e0209ed692d36b4d9ec5
+
+Commands from this repo:
+  make -C research/native-probe test
+  make -C research/native-probe PS4_PAYLOAD_SDK=/path/to/ps4-payload-sdk
+
+Local SDK is ../toolchains/ps4-payload-sdk. Compiler: clang 23.1.3.
+Host tests passed with AddressSanitizer and UndefinedBehaviorSanitizer:
+wrong firmware, failed firmware query, failed module list, normal lookup,
+oversized module count, empty module list and non-NUL module/version strings.
+The tests simulate PS4 APIs; they do not validate the real firmware ABI.
+PS4 crossbuild passed with -Wall -Wextra -Werror.
+ELF inspection: x86-64, DYN, entry 0x570. Imported libraries are kernel_web,
+SceLibcInternal and SceNet. Native radio/microphone APIs are not imported calls.
+Artifact: build/native-probe/bluehen_native_probe.elf
+SHA-256: 23cc5fb00fafc499e4468dbc8e8158b3dc4660af902562de463081de2971d4cc
+No console deployment/execution or physical headset test has occurred.
+
+NEXT HARDWARE GATE
+Obtain the current 9.60 console IP and exact GoldHEN version. Confirm the
+available loader can execute this SDK's dynamic ELF and its libkernel_web
+dependency in the selected process context; do not assume any raw binloader
+accepts it. Adapt to that loader if necessary before sending anything.
+Then run this probe, retrieve the log, and observe controller continuity.
+Inventory is discovery evidence, not an A2DP or microphone pass.
+
+NATIVE TRANSPORT QUESTIONS
+OpenOrbis BluetoothHid.h exposes only sceBluetoothHidGetDeviceInfo with no
+useful parameter signature. That is not a raw HCI/L2CAP API.
+The payload SDK includes stock FreeBSD Bluetooth headers; their presence does
+not demonstrate PS4 kernel support. Do not blindly use FreeBSD protocol IDs,
+device ioctls, guessed offsets or private function signatures on the PS4.
+Determine ownership and ABI using actual 9.60 module evidence. Start with
+metadata/export discovery, then local analysis of matching firmware modules
+if available. Keep proprietary firmware and dumps local.
+Need proof of an additional ACL/L2CAP link coexisting with DualShock input.
+Do not detach/reset the internal controller as the first experiment.
+
+MICROPHONE ARCHITECTURE AND ACCEPTANCE GATES
+Playback: PS4 as A2DP Source -> compatible Sink; SBC baseline; negotiate
+capabilities instead of hardcoding a brand/model whitelist.
+Microphone: headset must expose a two-way profile (HFP is the initial target).
+PS4 side must act as Audio Gateway: SDP/RFCOMM service-level connection,
+codec negotiation and SCO/eSCO data transport in both directions. HearBridge
+has no such implementation. HFP is separate from A2DP; an A2DP-only speaker
+cannot supply a microphone. Simultaneous high-quality A2DP and HFP cannot be
+promised for arbitrary headsets; explicitly design a voice mode and test it.
+
+Required independent milestones:
+1. Native transport access + controller coexistence, no audio needed yet.
+2. SDP/capability discovery with at least one actual A2DP/HFP headset.
+3. Low-volume SBC test tone -> A2DP playback -> one game's PCM.
+4. HFP service-level connection -> SCO/eSCO transport -> bounded microphone
+   PCM capture/level measurement in our own test application.
+5. Real PS4 audio-input routing: getting PCM in our app is NOT party chat.
+   Determine AudioIn/service routing and ABI before writing an injection path.
+   Upstream AudioIn headers list names with void() placeholders, not usable ABI.
+6. A remote chat participant confirms live speech; test mute, user assignment,
+   disconnect/reconnect, controller continuity, latency and audio quality.
+7. Broaden interoperability across headset vendors/profile versions. Do not
+   claim 'every generic sink' from one successful headset.
+
+Until steps 1 and 5 have a verified route, native audio+mic remains feasibility
+work. No UI toggle or advertised HFP service should claim working microphone
+support before the corresponding transport and audio routing are implemented.
+
+SOURCE REFERENCES
+https://github.com/ps4-payload-dev/sdk
+https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/blob/master/include/orbis/BluetoothHid.h
+https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/blob/master/include/orbis/AudioIn.h
+https://www.bluetooth.com/specifications/specs/hands-free-profile-1-8/
+https://www.bluetooth.com/wp-content/uploads/2022/01/Introducing-Bluetooth-LE-Audio-book.pdf
+
+WORKSPACE
+Working repo: BlueHEN, remote NichlasEk/PS4-BlueHEN, branch bluehen/microphone-bringup.
+Upstream: X-F1REBALL-X/HearBridge-PS4, initial commit 8c7e55e5c50b645a5e3d42c2a02928f030a71f3f.
+Separate review clones remain unmodified. Root PS4-BlueHEN is not an independent
+repo; always use BlueHEN as git cwd to avoid the parent EutherScryer repository.

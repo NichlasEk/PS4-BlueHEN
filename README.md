@@ -1,3 +1,18 @@
+## BlueHEN native Bluetooth research (PS4 9.60)
+
+This fork targets the PS4's **built-in Bluetooth**, generic A2DP Sink playback,
+and microphone input from headsets that also support a two-way profile such
+as HFP. **Native Bluetooth audio and microphone support are not implemented.**
+An A2DP-only sink does not provide microphone input.
+
+The first artifact is an inventory payload in `research/native-probe`.
+See [the development handoff](research/NATIVE-HANDOFF.txt) for build commands,
+test evidence, limitations and the next hardware gate. Do not use the upstream
+launcher below expecting native Bluetooth or microphone support: that launcher
+still requires a USB dongle and provides playback only.
+
+The upstream HearBridge implementation and attribution follow unchanged.
+
 <div align="center">
 
 <img src="docs/img/banner.png" alt="HearBridge PS4">
