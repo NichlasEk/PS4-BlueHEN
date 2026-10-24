@@ -22,6 +22,18 @@ orbis_audiod has a /vmicDdShmAin mapping.
 No Bluetooth scan, pairing, disconnect or reset was requested.
 No headset microphone stream or voice data was read/recorded.
 
+CUSTOM PAYLOAD EXECUTION
+The inventory ELF SHA-256
+2ba49d764d1780a570afb86c4f4680c7f36bf1bd2f9c772531b60f3d62e0517b
+was sent once to the binloader. FTP retrieval of its log confirmed firmware
+0x09600011, the four device candidates, and END result=0. Its only reported
+module is eboot.bin. This verifies the exact inventory payload on the console,
+not AudioIn module loading or native Bluetooth functionality.
+Log SHA-256: c47c46b552fdee6388924b2aee2c4cd96622ad29af8df33d1cc11199be468489
+A subsequent debugger query still returned firmware 960 and listed ShellUI,
+ShellCore, PartyDaemon and orbis_audiod. This is service/process evidence,
+not a physical controller or headset test.
+
 FILE-TO-LIVE CHECKS
 Locally retrieved libSceAudioIn.sprx SHA-256:
 af373e7ddf9d21558b1800df1269f7e40dac16389ca93a90df82203e5334a616
@@ -83,6 +95,36 @@ Static observations, NOT a callable ABI contract:
 The first Create argument's semantics, permission requirements, the stored
 field's meaning, routing and exact wait behavior still require verification.
 Do not call these functions in PartyDaemon merely because they are mapped.
+
+INITIALIZATION AND FAILURE PATH FOLLOW-UP
+Create calls AudioIn initialization, which obtains an AudioOut IPC session
+through sceAudioOutInitIpmiGetSession. It maps /vmicDdShmAin and opens
+/vmicDdEvfAin before the parameter checks. The previously unidentified import
+at PLT 0x228 is sceMbusInit, confirmed by its NID wRPXMGtkOq0 and an export in
+the locally retrieved libSceMbus.sprx. It is not evidence of a permission check.
+Mbus file SHA-256:
+60c57b2b2c1e55431c73d196cebb51de9a656bc4bb561877d938d0362e68cb38
+
+Create's IPC stub at 0x4560 sends command 0x1234002a and four 32-bit fields:
+current PID, the preserved esi argument, edx argument and normalized ecx.
+Destroy's stub at 0x45e0 sends 0x1234002b with current PID and handle.
+The incoming first Create register is not preserved in the examined wrapper;
+this does not establish a public cross-firmware function declaration.
+
+After successful daemon creation, Create invokes an Mbus export with NID
+i1D0nTVcCgk (Mbus offset 0x5790), passing 0x10, 0, handle, 1, 0. Destroy uses
+the same export with the fourth argument zero after successful daemon destroy.
+The name and complete semantics of this notification remain unresolved.
+If the post-create Mbus call returns negative, the wrapper substitutes that
+error for the newly created handle, with no visible destroy in this wrapper.
+Consequently a negative Create return alone cannot prove no resource exists.
+Whether the service or process teardown cleans it up is still unverified.
+An initial test must address this failure path before repeated creation;
+blind create/retry or guessing another process's handle is inappropriate.
+
+Neither full command constant was found verbatim in the retrieved audiod ELF.
+This does not show the handler is absent: dispatch may encode IDs differently
+or reside in another component. Service ownership/dispatch remains unresolved.
 
 SAFE NEXT EXPERIMENT DESIGN
 Finish the initialization and service-call analysis. Then a dedicated,

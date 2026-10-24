@@ -50,16 +50,21 @@ Artifact: build/native-probe/bluehen_native_probe.elf
 Original SHA-256: 23cc5fb00fafc499e4468dbc8e8158b3dc4660af902562de463081de2971d4cc
 Updated probe (includes bt/wlanbt names and three Vmic exports) SHA-256:
 2ba49d764d1780a570afb86c4f4680c7f36bf1bd2f9c772531b60f3d62e0517b
-Neither build of this inventory payload has been executed on the console.
+The updated build was executed once through GoldHEN binloader on 2026-10-24.
+Its retrieved console log ends with END result=0, reports 0x09600011 and
+lists the four device candidates. This verifies this exact ELF/loader path.
+Only one current-process module, eboot.bin, was reported; no AudioIn exports
+were resolved there. This does not contradict their presence in system apps.
+Log SHA-256: c47c46b552fdee6388924b2aee2c4cd96622ad29af8df33d1cc11199be468489
 A separately pinned ps4debug-NG payload was started and verified; metadata and
 bounded memory reads are now available. No physical headset test has occurred.
 
 NEXT HARDWARE GATE
 The current console is accessible through FTP and ps4debug-NG. Re-query
 firmware, process identity and mappings each time; never reuse old PIDs/bases.
-Read-only inventory can proceed without executing the custom probe. Before
-running a future custom payload, establish compatibility between its SDK ELF
-and the selected loader. Do not assume raw binloader support for dynamic ELF.
+The exact inventory ELF has now passed the binloader execution gate. This
+does not establish module-loading, AudioIn initialization or microphone ABI
+compatibility for a future payload. Preserve the tested binary and log.
 Next technical gate: distinguish existing Jedi audio IOCTLs from a generic
 ACL/L2CAP/HFP interface, and finish Vmic permission/routing/ABI analysis before
 an isolated synthetic-microphone test. Inventory is not an audio pass.
