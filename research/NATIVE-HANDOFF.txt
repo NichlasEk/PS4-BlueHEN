@@ -68,6 +68,12 @@ compatibility for a future payload. Preserve the tested binary and log.
 Next technical gate: distinguish existing Jedi audio IOCTLs from a generic
 ACL/L2CAP/HFP interface, and finish Vmic permission/routing/ABI analysis before
 an isolated synthetic-microphone test. Inventory is not an audio pass.
+The Vmic daemon dispatch and per-PID cleanup routine are now traced; see the
+findings file. research/vmic_status.py passed on the console and observed four
+unused slots. Use it before/after any later isolated test; do not reuse that
+baseline as current state. Module loading and AudioOut/Mbus initialization in
+our dedicated test process remain the next execution gate. Cleanup on process
+exit is still a hypothesis to verify, despite the identified cleanup code.
 
 NATIVE TRANSPORT QUESTIONS
 OpenOrbis BluetoothHid.h exposes only sceBluetoothHidGetDeviceInfo with no

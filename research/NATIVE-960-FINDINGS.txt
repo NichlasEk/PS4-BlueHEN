@@ -122,9 +122,48 @@ Whether the service or process teardown cleans it up is still unverified.
 An initial test must address this failure path before repeated creation;
 blind create/retry or guessing another process's handle is inappropriate.
 
-Neither full command constant was found verbatim in the retrieved audiod ELF.
-This does not show the handler is absent: dispatch may encode IDs differently
-or reside in another component. Service ownership/dispatch remains unresolved.
+DAEMON DISPATCH AND RESOURCE OBSERVATION
+The daemon dispatch has now been traced. At 0x2aa68 it adds 0xedcc0000
+(subtracts 0x12340000 modulo 32 bits), bounds the index to 0x2d, then uses
+the signed relative jump table at 0x6c910. Index 0x2a targets 0x2af72 and
+index 0x2b targets 0x2af8b. Thus the absence of literal full command IDs was
+an encoding detail, not an absent handler.
+Create: 0x2af72 -> 0x29210 -> 0x28840.
+Destroy: 0x2af8b -> 0x29220 -> 0x28960.
+Create copies the four input fields into the shared slot. Offsets relative
+to the slot are active=0, owner PID=4, channels=0x2018, rate=0x201c,
+frames=0x2020, handle=0x2030; stride=0x2034, four slots. The handle contains
+0x00040000, a generation in bits 8..15, and the slot in the low byte.
+These layouts are specific to the examined firmware image.
+
+The routine at 0x28700 iterates active slots matching its PID argument and
+clears active/owner state. Callers were found at 0x1685b and 0x1fa92 in larger
+cleanup paths. This establishes that PID-based cleanup code exists; its
+invocation on termination of our future test process remains unverified.
+Do not call private daemon functions or infer a permission bypass from this.
+
+research/vmic_status.py now provides read-only observation via an existing
+local ps4remote debug client. It checks firmware/platform, fresh process
+identity/maps, four 32-byte code hashes, and the named shared mapping before
+reading slot metadata. It skips PCM buffers. It requires two matching reads
+and rechecks the pointer/identity, but cannot guarantee an atomic snapshot.
+An inactive slot can retain old format/handle fields; active/owner are the
+primary indicators, not a requirement that every field return to zero.
+
+Physical console result on 2026-10-24: all four code checks passed and all
+four slots were inactive with owner PID zero. This is a pre-test baseline,
+not evidence that Create, Write, Destroy or chat audio works.
+Local private record: ../review/live-229/vmic-baseline.json.
+Five host tests cover metadata-only reads, wrong firmware, code mismatch,
+wrong shared mapping and changing slot ownership.
+
+Commands from BlueHEN:
+  python3 -B -m unittest discover -s research -p test_vmic_status.py -v
+  python3 -B research/vmic_status.py CONSOLE_IP --client-dir /path/to/ps4remote/probe
+The transport dependency is deliberately explicit; no debugger payload is
+sent and no mutation/RPC method is invoked by the monitor. A future hardware
+test must compare fresh before/after observations, including after process
+exit, and stop on unexpected ownership or uncertain cleanup.
 
 SAFE NEXT EXPERIMENT DESIGN
 Finish the initialization and service-call analysis. Then a dedicated,
