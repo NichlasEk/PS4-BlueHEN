@@ -1,0 +1,110 @@
+Native Bluetooth / microphone findings, 2026-10-24
+
+CURRENT CONCLUSION
+There are real system Bluetooth audio paths and a virtual microphone API in
+the examined 9.60 firmware. These are useful research leads, not proof that
+generic A2DP/HFP devices work. No native headphone or microphone support has
+been enabled by this branch.
+
+LIVE EVIDENCE
+The user-selected console returned firmware_raw=960 from ps4debug-NG 1.3.2.
+FTP was already active. Remote receiver HTTP service was not running.
+The known debugger was started using the exact pinned payload SHA-256:
+28829f48465d3dfdf97afc15f01edafd8802f8213c44635af6f21e0e8b48c8f6
+Its version response then verified execution. No empty binloader probe was
+sent. Subsequent debugger commands only queried metadata and read memory;
+no RPC stub, allocation, call, patch or register modification was performed.
+
+Observed device node names: /dev/bt, /dev/wlanbt, /dev/bluetooth_hid, /dev/hid.
+Observed kernel-process name: SceBtDriver. Names do not document an API.
+AudioIn is mapped in SceShellUI, ScePartyDaemon and SceVoiceAndAgent.
+orbis_audiod has a /vmicDdShmAin mapping.
+No Bluetooth scan, pairing, disconnect or reset was requested.
+No headset microphone stream or voice data was read/recorded.
+
+FILE-TO-LIVE CHECKS
+Locally retrieved libSceAudioIn.sprx SHA-256:
+af373e7ddf9d21558b1800df1269f7e40dac16389ca93a90df82203e5334a616
+The first 32 bytes at Open, Input and SetConnections match live memory in
+both ShellUI and PartyDaemon (six checks). The Vmic Create, Write and Destroy
+prefixes also match PartyDaemon (three checks). This checks the selected
+sites, not full-image equality or runtime behavior.
+
+Locally retrieved orbis_audiod.elf SHA-256:
+ff829eaeed8f7efc75b97e83d75f721d33c1195e7672906f2197623287db07b2
+Two 32-byte code sites, offsets 0x1b6c0 and 0x1f509, match live memory.
+The code around the first site opens /dev/bt. Its cached output/input file
+descriptor slots contained 12 and 19, respectively. These values are an
+observation of cached state; descriptors were not used by this investigation.
+
+BLUETOOTH HID LAYER
+libSceBluetoothHid.sprx SHA-256:
+e54ba1a91625f2ec3b657bf33d5ba456eef8bce8b02a8f7206c9e39c3deddadb
+17 defined symbols; known names can be recovered by matching Orbis NIDs.
+Matched names include Init, RegisterCallback, UnregisterCallback,
+RegisterDevice, UnregisterDevice, GetDeviceName, GetReportDescriptor,
+GetInputReport, GetFeatureReport, SetOutputReport, SetFeatureReport,
+DisconnectDevice and GetDeviceInfo under the sceBluetoothHid prefix.
+Do not confuse these HID operations with a generic audio profile interface.
+
+GetDeviceInfo at offset 0x1400 prepares a 16-byte ioctl envelope with an
+integer argument and a pointer, then uses request 0x8010a40b against the HID
+device path. The size/meaning of the pointed-to output is not recovered.
+No query using that guessed structure has been attempted.
+
+AUDIO DAEMON BLUETOOTH PATH
+orbis_audiod contains an AVDTP error-name table. This table alone cannot prove
+that a usable A2DP profile implementation is active or complete.
+Separate code opens /dev/bt for audio output and audio input.
+Observed request constants include 0x80106212, 0x80206216 and 0x80206217.
+The receive path using 0x80206217 leads to a sceBtRecvAudio error message and
+JEDI processing at 16/48 kHz. This suggests the existing controller audio
+path; generic HFP/SCO behavior is not established. Do not replay these ioctls
+or assume a PCM buffer layout from the request's encoded envelope size.
+Further work must trace device identification, profile setup and actual
+payload encoding before deciding whether to reuse any of this path.
+
+VIRTUAL MICROPHONE CANDIDATE
+Exact NID matches in the 9.60 AudioIn module:
+  sceAudioInVmicCreate   DVTn+iMSpBM  offset 0x2840, size 309
+  sceAudioInVmicDestroy  3ULZGIl+Acc  offset 0x2980, size 222
+  sceAudioInVmicWrite    4kHw99LUG3A  offset 0x2b80, size 413
+The same names/NIDs appear in shadPS4's source, but those functions are stubs
+there. Its void-argument declarations are not evidence of the console ABI.
+
+Static observations, NOT a callable ABI contract:
+- Create preserves argument registers esi, edx and ecx across initialization.
+- It accepts esi values 128 or 256 and edx values 16000 or 48000.
+- Its ecx check accepts 0..2, with 0 normalized to 1.
+- Write uses edi as a handle-like value, esi as a count and rdx as a pointer.
+- Write checks esi <= 1024, handle prefix 0x00040000 and slot range 0..3.
+- Write computes a byte count as esi * a stored field * 2 and caps it at 4096.
+- It uses a shared-memory/event-flag path and a wait value of 2000000.
+The first Create argument's semantics, permission requirements, the stored
+field's meaning, routing and exact wait behavior still require verification.
+Do not call these functions in PartyDaemon merely because they are mapped.
+
+SAFE NEXT EXPERIMENT DESIGN
+Finish the initialization and service-call analysis. Then a dedicated,
+removable test application can attempt virtual-mic creation, write bounded
+synthetic silence and destroy only its own returned handle. It must not alter
+global input routing or existing microphones as an initial test. An API return
+code is not chat proof: later acceptance requires the intended user/input to
+be selected and a remote participant to confirm real microphone speech.
+
+The independent radio gate remains: generic headset discovery/SDP,
+ACL/L2CAP/AVDTP for A2DP, RFCOMM/HFP plus SCO/eSCO for mic, all coexisting
+with the DualShock. Do not substitute the workstation USB dongle for this.
+
+REPRODUCIBILITY / PRIVACY
+inspect_orbis_elf.py extracts requested symbol metadata from a local console
+ELF and reports hashes rather than code bytes. It has seven synthetic tests:
+  python3 -B -m unittest discover -s research -p test_inspect_orbis_elf.py -v
+  python3 research/inspect_orbis_elf.py /local/path/libSceAudioIn.sprx
+The native-probe host tests and PS4 crossbuild also pass after adding Vmic
+names and the bt/wlanbt device-name filters. None is hardware audio evidence.
+Firmware files, disassembly and raw local journals remain outside this repo
+under ../review/live-229. They must not be committed or uploaded.
+
+Primary public reference for symbol names (stub only):
+https://github.com/shadps4-emu/shadPS4/blob/main/src/core/libraries/audio/audioin.cpp

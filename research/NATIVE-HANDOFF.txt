@@ -5,7 +5,9 @@ PS4 firmware 9.60. Use the built-in Bluetooth radio, with no USB dongle.
 Target generic A2DP Sink playback (user wrote ADP3, interpreted as A2DP).
 Microphone is required too; the intended integration is conservatively treated
 as PS4 chat, not merely recording into our own homebrew application.
-Exact headset, console model, current IP and GoldHEN version remain unknown.
+Exact headset, console model and GoldHEN version remain unknown. Console address
+was supplied and reached on the LAN; live firmware query returned 960.
+See NATIVE-960-FINDINGS.txt for the subsequent read-only investigation.
 
 CORRECTED DIRECTION
 The initial dongle assumption was explicitly rejected by the user. The CSR
@@ -45,16 +47,22 @@ PS4 crossbuild passed with -Wall -Wextra -Werror.
 ELF inspection: x86-64, DYN, entry 0x570. Imported libraries are kernel_web,
 SceLibcInternal and SceNet. Native radio/microphone APIs are not imported calls.
 Artifact: build/native-probe/bluehen_native_probe.elf
-SHA-256: 23cc5fb00fafc499e4468dbc8e8158b3dc4660af902562de463081de2971d4cc
-No console deployment/execution or physical headset test has occurred.
+Original SHA-256: 23cc5fb00fafc499e4468dbc8e8158b3dc4660af902562de463081de2971d4cc
+Updated probe (includes bt/wlanbt names and three Vmic exports) SHA-256:
+2ba49d764d1780a570afb86c4f4680c7f36bf1bd2f9c772531b60f3d62e0517b
+Neither build of this inventory payload has been executed on the console.
+A separately pinned ps4debug-NG payload was started and verified; metadata and
+bounded memory reads are now available. No physical headset test has occurred.
 
 NEXT HARDWARE GATE
-Obtain the current 9.60 console IP and exact GoldHEN version. Confirm the
-available loader can execute this SDK's dynamic ELF and its libkernel_web
-dependency in the selected process context; do not assume any raw binloader
-accepts it. Adapt to that loader if necessary before sending anything.
-Then run this probe, retrieve the log, and observe controller continuity.
-Inventory is discovery evidence, not an A2DP or microphone pass.
+The current console is accessible through FTP and ps4debug-NG. Re-query
+firmware, process identity and mappings each time; never reuse old PIDs/bases.
+Read-only inventory can proceed without executing the custom probe. Before
+running a future custom payload, establish compatibility between its SDK ELF
+and the selected loader. Do not assume raw binloader support for dynamic ELF.
+Next technical gate: distinguish existing Jedi audio IOCTLs from a generic
+ACL/L2CAP/HFP interface, and finish Vmic permission/routing/ABI analysis before
+an isolated synthetic-microphone test. Inventory is not an audio pass.
 
 NATIVE TRANSPORT QUESTIONS
 OpenOrbis BluetoothHid.h exposes only sceBluetoothHidGetDeviceInfo with no

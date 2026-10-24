@@ -11,6 +11,10 @@ test evidence, limitations and the next hardware gate. Do not use the upstream
 launcher below expecting native Bluetooth or microphone support: that launcher
 still requires a USB dongle and provides playback only.
 
+The [9.60 findings](research/NATIVE-960-FINDINGS.txt) document live-checked
+AudioIn/Vmic entry points and the existing Bluetooth audio path in the system
+audio daemon. These findings do not establish generic A2DP/HFP compatibility.
+
 The upstream HearBridge implementation and attribution follow unchanged.
 
 <div align="center">

@@ -47,9 +47,9 @@ int main(void)
     firmware_result = 0; list_result = -1;
     assert(bluehen_inventory(log) == 3 && info_calls == 0);
     list_result = 0; reset();
-    assert(bluehen_inventory(log) == 0 && info_calls == 1 && symbol_calls == 9);
+    assert(bluehen_inventory(log) == 0 && info_calls == 1 && symbol_calls == 12);
     reported = 300; reset();
-    assert(bluehen_inventory(log) == 0 && info_calls == 256 && symbol_calls == 2304);
+    assert(bluehen_inventory(log) == 0 && info_calls == 256 && symbol_calls == 3072);
     reported = 0; reset();
     assert(bluehen_inventory(log) == 0 && info_calls == 0 && symbol_calls == 0);
     assert(fclose(log) == 0);

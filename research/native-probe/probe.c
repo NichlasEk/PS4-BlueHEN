@@ -30,6 +30,7 @@ static const char *symbols[] = {
     "sceBluetoothHidGetDeviceInfo", "scePadGetBluetoothAddress",
     "sceAudioInInit", "sceAudioInOpen", "sceAudioInInput",
     "sceAudioInClose", "sceAudioInSetConnections",
+    "sceAudioInVmicCreate", "sceAudioInVmicWrite", "sceAudioInVmicDestroy",
     "sceAudioOutOpen", "sceAudioOutOutput"
 };
 
@@ -89,7 +90,9 @@ static void list_candidates(FILE *log, const char *directory)
     }
     while (inspected < 4096 && (entry = readdir(dir)) != NULL) {
         inspected++;
-        if (strstr(entry->d_name, "bluetooth") ||
+        if (strcmp(entry->d_name, "bt") == 0 ||
+            strcmp(entry->d_name, "wlanbt") == 0 ||
+            strstr(entry->d_name, "bluetooth") ||
             strstr(entry->d_name, "Bluetooth") ||
             strstr(entry->d_name, "audio") ||
             strstr(entry->d_name, "Audio") ||
