@@ -1,5 +1,26 @@
 # Package cleanup and lifecycle on firmware9.60
 
+## Cleanup completed after user reboot
+
+In reboot5, a fresh debugger session and ShellUI PID42 were verified. The last
+old title BLHN00006 matched its expected package hash, had no running process,
+and AppExists returned true. AppUnInstall returned0 from the verified ShellUI
+context. No database edits or manual console-file deletion were used.
+
+Independent FTP and read-only database snapshots confirm that only BLHN00007
+remains in /user/app, /user/appmeta, tbl_appinfo and all four user browse tables.
+Its full package SHA256 still matches the accepted0.06 artifact:
+5bc38620b0b9907dd13ec30cd3ddb1b0d407c456cdc88920f1e75fb7bb3b83e9.
+All six old test titles are removed. The reboot-assisted recovery is now
+physically verified; automatic lifecycle teardown without reboot still needs a
+fix and physical testing. No0.07 package has been installed.
+
+Private journals: cleanup-last-reboot5.json and
+cleanup-reboot5-final/verification.json. Older RPC sessions/tickets are invalid;
+new ShellUI instrumentation is recorded in the reboot5 cleanup journal.
+
+## Earlier investigation
+
 ## Verified cleanup, 2026-10-25
 
 Seven BlueHEN titles accumulated during separate experiments. The user reported
