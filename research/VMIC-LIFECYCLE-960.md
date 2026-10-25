@@ -107,3 +107,20 @@ no automatic retry or speculative cleanup after transport timeout:
 ```
 python3 -B -m unittest discover -s research -p test_vmic_lifecycle.py -v
 ```
+
+## 2026-10-25: 0.05 physical lifecycle passes
+
+After the confirmed hard freeze and user reboot, a fresh debugger session was
+verified (reboot4 ShellCore PID42), and Receiver PID69 installed BLHN00006
+without a title cycle. Installed package readback matched the preserved 0.05
+SHA-256 `60ddc2b43cd25e8603d258e849e0d5fda8b9a9b024d3ab2d9c91c1be284d794f`.
+Own process PID72: complete auth-profile match, RegisterDaemon=0, AudioIn load=0,
+VmicCreate(0,128,16000,1)=0x40100. Audiod slot0 was active and owned by PID72,
+128 frames / 16kHz / mono. Exact-handle Destroy returned0; the slot was inactive
+with owner0 before process exit and remained clear afterward. AudioIn and
+SystemService unload returned0, END0, exit and removal of control files verified.
+No PCM write, routing or Bluetooth call was made. This establishes lifecycle
+success, not headset capture or delivery to game/party chat.
+Launch ticket0 consumed once afterward: 0x60000e0d.
+Local evidence: service-v5-run.json, service-v5-console.log,
+service-app-v5-side-install.json, consume-v5-reboot4.json, reboot4-session.json.
