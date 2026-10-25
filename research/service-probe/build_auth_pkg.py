@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the isolated BLHN00002 module test using a local OpenOrbis toolchain.
+"""Build the isolated BLHN00003 module test using a local OpenOrbis toolchain.
 
 System runtime modules are copied locally and must not be committed.
 """
@@ -61,7 +61,7 @@ for name, source in {
 }.items():
     (stage / name).parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, stage / name)
-content = 'IV0000-BLHN00002_00-BLUEHENSERVICE01'
+content = 'IV0000-BLHN00003_00-BLUEHENSERVICE01'
 tool = sdk / 'bin/linux/PkgTool.Core'
 sfo = stage / 'sce_sys/param.sfo'
 sfo.unlink(missing_ok=True)
@@ -70,7 +70,7 @@ for key, value in dict(APP_TYPE=1, ATTRIBUTE=0, DOWNLOAD_DATA_SIZE=0, SYSTEM_VER
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Integer', '--maxsize', 4, '--value', value)
 for key, size, value in [('APP_VER', 8, '00.02'), ('VERSION', 8, '01.00'),
                          ('CATEGORY', 4, 'gdd'), ('CONTENT_ID', 48, content),
-                         ('TITLE_ID', 12, 'BLHN00002'), ('TITLE', 128, 'BlueHEN Service Test')]:
+                         ('TITLE_ID', 12, 'BLHN00003'), ('TITLE', 128, 'BlueHEN Service Test')]:
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Utf8', '--maxsize', size, '--value', value)
 run(sdk / 'bin/linux/create-gp4', '-out', 'pkg.gp4', '--content-id=' + content,
     '--files', ' '.join(files), cwd=stage)
@@ -92,7 +92,7 @@ with (out / 'validation.log').open('w') as log:
 if '[OK]' not in (out / 'validation.log').read_text():
     raise RuntimeError('Package validation did not pass')
 manifest = dict(profile_sha256=hashlib.sha256(profile).hexdigest(),
-                baseline_sha256=hashlib.sha256(baseline).hexdigest(), title_id='BLHN00002', bytes=pkg.stat().st_size,
+                baseline_sha256=hashlib.sha256(baseline).hexdigest(), title_id='BLHN00003', bytes=pkg.stat().st_size,
                 sha256=hashlib.sha256(pkg.read_bytes()).hexdigest(), package=str(pkg))
 (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 print(json.dumps(manifest))

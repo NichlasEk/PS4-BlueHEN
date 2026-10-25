@@ -124,7 +124,7 @@ system refusal and missing/duplicate/truncated signature records. The PS4-target
 source compiled using a synthetic all-zero header strictly for compile checking;
 that object is not a valid deployable test artifact.
 
-**No version0.02 package exists yet.** Capturing the baseline from the unchanged
+**Initial attempt (superseded by the reboot-session result below):** Capturing the baseline from the unchanged
 v0.01 app was interrupted during launch. Ticket9 had returned EAGAIN three times;
 the next debugger mapping read timed out before the next result RPC submission.
 Subsequent debugger744 and FTP2121 connections were refused. No baseline/profile
@@ -137,3 +137,84 @@ before this attempt. New local journals: service-auth-baseline.json and
 launch-BLHN00002-service-auth-baseline.json. If the boot/session survives, inspect
 ticket9 and process/log state before any continuation; after reboot rediscover
 all mappings/RPC state instead of reusing old addresses or tickets.
+
+
+## Reboot-session profile experiment, 2026-10-25
+
+The user confirmed a reboot. The pinned debugger was sent once and verified
+on9.60 after startup. A new ShellCore RPC session was installed and verified;
+no old stub, scratch address or ticket was reused. The unchanged BLHN00002
+v0.01 ran as PID71. Its136-byte get_authinfo result was captured privately,
+and a second profile differs in exactly caps[0] bit62. No registration gate
+was issued. The app logged END result=1 on permission timeout and exited.
+
+Baseline SHA-256:6002c4a17b06cd6b00b1837c8e762c959a848a99ca1e02e6ed8f20cc73a2b93a.
+Requested profile SHA-256:a969162168ef1bb7f5912289f993a7fa614043ed2468b6e0098e45e9011ef5e2.
+Profile files, generated headers and fake-SELF material remain local.
+
+Replacing BLHN00002 was refused by AppInstUtil with0x80990007. Readback proved
+the original package remained unchanged. Instead, the profile experiment was
+packaged as separate title BLHN00003 v00.02. Installation and full readback
+matched c7b0dc282ee5047cdc0f6d3c92efbd326deef3b509481785c226704b50591f3e.
+The older BLHN00002 v00.02 artifact in the build directory was never installed.
+
+BLHN00003 launched as PID74 and logged unresolved lifecycle exports, then
+END result=1. A separate process query verified its exit. Since the code
+required all lifecycle exports before querying authinfo, no runtime profile
+measurement occurred. No registration call or heartbeat/stop test ran.
+Do not infer that the loader accepted or rejected the profile from this result.
+
+Version00.03, BLHN00004, fixes that diagnostic ordering. It inventories modules,
+logs each matching export lookup, accepts known libkernel module-name variants,
+and measures authinfo before requiring the daemon export. It retains strict
+profile comparison before registration; no modules are loaded by this change.
+Build/package/profile validation passed, and FTP staging/readback matched:
+
+- build/service-app-v3/IV0000-BLHN00004_00-BLUEHENSERVICE01.pkg
+- SHA-256:f98747e30c324169da6836ad1e0119b5f5bb2a5ca6ba207023fc1498ce49d838
+- 6619136 bytes; subsequently installed/readback-verified; launch outcome unresolved below.
+
+Build with build_auth_diag_pkg.py and the same two private profile-file
+variables. Four profile host tests pass. Package validation does not prove
+runtime authorization, background operation or microphone support.
+
+Private evidence: service-auth-reboot2.json, service-auth-reboot2-console.log,
+service-app-v2-install.json (refused replacement), service-app-v2-side-install.json,
+service-v2-run.json, service-v2-console.log, service-v2-postcheck.json,
+service-v3-transfer.json. New-boot launch tickets0 and1 are consumed; pre-reboot
+ticket9 is obsolete. Preserve separate boot/session identities.
+
+
+## Latest launch interruption and UT99 workflow correction
+
+Version0.03 BLHN00004 was installed from a fresh Receiver session, and its
+installed package matched the hash above. Launch ticket2 was accepted and
+returned EAGAIN twice. A subsequent debugger operation timed out; fresh
+connections to both744 and2121 were then refused. No service-v3.log could be
+retrieved, so execution, authorization and cleanup are unverified. Do not
+resubmit the launch. The user was asked about the console display/state.
+
+The user's UT99 project documents successful repeated installations using the
+same Receiver backend. Its HANDOFF-2026-10-21-PHYSICAL-SIGNALS.md and local
+start-receiver.py, launch-title.py, consume.py and install-probe.py establish:
+
+- One owned BGFT task per Receiver lifetime is a backend guard, not a general
+  limitation requiring manual interaction between packages.
+- Switching between the test application and Receiver refreshes the Receiver
+  process as part of the automated iteration workflow. Verify a new identity
+  and bgft_task=-1; merely bringing an existing process forward is insufficient.
+- UT99 separates launch submission from result consumption. Our combined helper
+  polls every0.5 seconds, including debugger map queries during app startup.
+  This is a concrete workflow difference, not proof of the interruption's cause.
+
+Future runs should submit once, observe startup through the app's unique log,
+then consume that same ticket separately after fresh session/code checks.
+No final ticket may be consumed twice. No launch may be repeated merely because
+its result is unknown. The local launch_service_separated.py is prepared and
+syntax-checked but unrun; it requires an explicit fresh RPC-session journal.
+Do not point the old combined supervisor at it unchanged: that supervisor's
+launch-success contract requires adaptation to pending results.
+
+Private evidence: service-app-v3-side-install.json, service-v3-run.json and
+launch-BLHN00004-service-auth-v3.json. The earlier reboot-session baseline
+measurement remains valid evidence; the latest launch is not a profile pass.
