@@ -306,3 +306,26 @@ success, not headset capture or delivery to game/party chat.
 Launch ticket0 consumed once afterward: 0x60000e0d.
 Local evidence: service-v5-run.json, service-v5-console.log,
 service-app-v5-side-install.json, consume-v5-reboot4.json, reboot4-session.json.
+
+## 2026-10-25: 0.06 one-block PCM probe prepared
+
+BLHN00007 00.06 extends the successful 0.05 lifecycle by one VmicWrite call,
+only after positive Create and supervisor confirmation of its own slot/handle.
+It passes handle, 128 frames and 256 bytes of signed-16-bit mono synthetic
+silence, then always attempts exact-handle Destroy after Write returns.
+The supervisor verifies all 413 bytes of the live Write function against the
+local console module before granting the Vmic gate. No routing or Bluetooth.
+Firmware disassembly at Write+0x49 validates count<=1024; channels*frames*2 is
+limited to4096 bytes; the function contains an event-flag wait with timeout
+value2000000. This is static evidence, not a measured runtime bound.
+No assertion is made that a successful API call delivers PCM to chat consumers.
+
+Built with warnings-as-errors and package/signature validation:
+`build/service-app-v6/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg`,6619136 bytes,
+SHA256 `5bc38620b0b9907dd13ec30cd3ddb1b0d407c456cdc88920f1e75fb7bb3b83e9`.
+Not installed or executed yet. Four auth and ten existing Vmic host tests pass;
+new Write execution still requires hardware validation. Local scripts:
+install_service_app_v6.py, run_service_app_v6.py SESSION_JSON,
+launch_service_v6_separated.py (allowlist only BLHN00007).
+Receiver PID69 has an owned task from 0.05. User was asked to close/open only
+Receiver. Do not cycle the older ordinary test app again or reboot automatically.
