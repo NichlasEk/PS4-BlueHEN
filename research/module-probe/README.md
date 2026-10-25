@@ -2,6 +2,35 @@
 
 This is a diagnostic, not working Bluetooth or microphone support.
 
+## Version 0.03: ordinary main-thread lifecycle
+
+The package builder now compiles `main_vmic.c` as APP_VER 00.03, retaining
+BLHN00001. It borrows preloaded AudioIn and performs one Create and one
+verified-handle Destroy on its ordinary main thread. No RPC thread is needed
+inside the test process. No PCM, routing, Bluetooth or module unloading occurs.
+
+The supervisor must verify firmware, title/PID, the exact installed package,
+full live Create/Destroy code, and a fresh Vmic baseline before supplying
+`/data/bluehen/vmic-main-v3.allow` containing the PID. The READY line in
+`vmic-main-v3.log` includes both resolved function addresses for verification.
+
+After CREATE_END, observe the new slot and recheck its owner. Supply
+`vmic-main-v3.cleanup` containing decimal `PID HANDLE` only for that process's
+new slot. For a failed Create with no owned slot, `PID 0` reports that result
+without invoking Destroy. Cleanup waits up to 45 seconds. On timeout, only
+a valid handle actually returned by Create may be destroyed automatically;
+a hidden handle is never guessed. A timeout without a verified handle is
+explicitly logged as unresolved and requires external post-exit observation.
+The main thread leaves three seconds after Destroy for live observation.
+The supervisor must archive logs and remove both control files after the run.
+
+The package was built and validated, then FTP-transferred and read back with
+SHA-256 `218f922b5f10e94ffedfbe2847d6d45a7d64d202010f5ab18028d269af622acf`.
+Artifact: `build/module-app-v3/IV0000-BLHN00001_00-BLUEHENMODULE001.pkg`.
+Installation/runtime verification is still pending: Receiver did not respond
+and the user was asked to reopen it. Do not describe this as a physical pass.
+Prior version artifacts remain separate and unchanged.
+
 ## Version 0.02
 
 The new app requests AudioIn (internal module ID 0x80000002) through
