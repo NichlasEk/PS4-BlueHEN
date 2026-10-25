@@ -85,7 +85,7 @@ static void ui_frame(void)
         }
     }
     if(SDL_GetTicks()-ui_last_input>300000u){ui_running=0;ui_cancel=1;}
-    if(permit("/data/bluehen/service-ui-v12.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
+    if(permit("/data/bluehen/service-ui-v13.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
     ui_box(0,0,1280,720,10,17,30);ui_box(0,0,1280,5,56,174,245);
     ui_text(55,42,4,"BlueHEN",235,244,255);ui_text(58,104,2,"Bluetooth-enheter",130,170,200);
     ui_text(58,153,2,ui_status,210,225,240);
@@ -105,7 +105,11 @@ static void ui_frame(void)
     ui_text(875,495,2,"Ljud / mikrofon:",150,170,190);ui_text(875,524,2,"inte klara annu",150,170,190);
     ui_text(58,636,2,"UPP/NER  Navigera    X  Valj    TRIANGEL  Sok",210,225,240);
     ui_text(58,678,2,ui_scanning?"CIRKEL  Avbryt sokning":"CIRKEL / OPTIONS  Avsluta",140,165,190);
-    SDL_RenderPresent(ui_renderer);SDL_UpdateWindowSurface(ui_window);
+    SDL_RenderPresent(ui_renderer);
+    int present_rc=SDL_UpdateWindowSurface(ui_window);
+    static int first_frame;
+    if(!first_frame){fprintf(diag_log,"UI_FRAME_PRESENTED result=%d\n",present_rc);first_frame=1;}
+    if(present_rc<0){fprintf(diag_log,"UI_PRESENT_FAILED %s\n",SDL_GetError());ui_running=0;ui_cancel=1;}
 }
 static int ui_names(FILE *f,int fd)
 {
@@ -213,13 +217,31 @@ static int inquiry(FILE *f)
 
 static int gui_run(FILE *f)
 {
-    int outcome=0;
-    if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER)!=0){fprintf(f,"UI_INIT_FAILED %s\n",SDL_GetError());return 40;}
+    int outcome=0,sdl_attempted=0;unsigned loaded=0;
+    /* IDs from OpenOrbis _types/sysmodule.h; own-process reference counts. */
+    const uint32_t dependencies[]={0x80000011u,0x80000022u,0x80000024u};
+    for(unsigned i=0;i<3;i++) {
+        fprintf(f,"UI_MODULE_LOAD_BEGIN id=0x%08x\n",dependencies[i]);
+        int rc=sceSysmoduleLoadModuleInternal(dependencies[i]);
+        fprintf(f,"UI_MODULE_LOAD_END result=0x%08x\n",(unsigned)rc);
+        if(rc){outcome=43;goto ui_cleanup;}loaded++;
+    }
+    fprintf(f,"UI_SDL_INIT_BEGIN\n");sdl_attempted=1;
+    int init_rc=SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER);
+    fprintf(f,"UI_SDL_INIT_END result=%d\n",init_rc);
+    if(init_rc!=0){fprintf(f,"UI_INIT_FAILED %s\n",SDL_GetError());outcome=40;goto ui_cleanup;}
+    fprintf(f,"UI_WINDOW_BEGIN\n");
     ui_window=SDL_CreateWindow("BlueHEN",0,0,1920,1080,0);
-    if(!ui_window){SDL_Quit();return 41;}
-    ui_renderer=SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(ui_window));
-    if(!ui_renderer){SDL_DestroyWindow(ui_window);SDL_Quit();return 42;}
-    SDL_RenderSetLogicalSize(ui_renderer,1280,720);
+    fprintf(f,"UI_WINDOW_END ok=%d\n",ui_window!=NULL);
+    if(!ui_window){outcome=41;goto ui_cleanup;}
+    fprintf(f,"UI_SURFACE_BEGIN\n");SDL_Surface *surface=SDL_GetWindowSurface(ui_window);
+    fprintf(f,"UI_SURFACE_END ok=%d\n",surface!=NULL);
+    if(!surface){outcome=42;goto ui_cleanup;}
+    ui_renderer=SDL_CreateSoftwareRenderer(surface);
+    fprintf(f,"UI_RENDERER_END ok=%d\n",ui_renderer!=NULL);
+    if(!ui_renderer){outcome=42;goto ui_cleanup;}
+    if(SDL_RenderSetLogicalSize(ui_renderer,1280,720)<0){outcome=44;goto ui_cleanup;}
+    fprintf(f,"UI_PAD_INIT_BEGIN\n");
     int user=-1;sceUserServiceInitialize(NULL);sceUserServiceGetForegroundUser(&user);
     if(user<0)sceUserServiceGetInitialUser(&user);
     if(user>=0 && scePadInit()>=0)ui_pad=scePadOpen(user,ORBIS_PAD_PORT_TYPE_STANDARD,0,NULL);
@@ -237,9 +259,18 @@ static int gui_run(FILE *f)
         }
         SDL_Delay(33);
     }
+ ui_cleanup:
     if(ui_pad>=0)scePadClose(ui_pad);
-    memset(ui_devices,0,sizeof(ui_devices));SDL_DestroyRenderer(ui_renderer);SDL_DestroyWindow(ui_window);SDL_Quit();
-    fprintf(f,"UI_CLOSED\n");return outcome;
+    memset(ui_devices,0,sizeof(ui_devices));
+    if(ui_renderer)SDL_DestroyRenderer(ui_renderer);
+    if(ui_window)SDL_DestroyWindow(ui_window);
+    if(sdl_attempted)SDL_Quit();
+    while(loaded) {
+        uint32_t id=dependencies[--loaded];int rc=sceSysmoduleUnloadModuleInternal(id);
+        fprintf(f,"UI_MODULE_UNLOAD id=0x%08x result=0x%08x\n",id,(unsigned)rc);
+        if(rc && outcome==0)outcome=45;
+    }
+    fprintf(f,"UI_CLOSED result=%d\n",outcome);return outcome;
 }
 
 static void inventory(void)
@@ -281,13 +312,13 @@ int main(void)
 {
     int (*exit_app)(const char *,const char **)=NULL;
     int pid=(int)getpid(),status=1,system_owned=0;
-    FILE *f=fopen("/data/bluehen/service-ui-v12.log","a");
+    FILE *f=fopen("/data/bluehen/service-ui-v13.log","a");
     if (!f) return 1;
     setvbuf(f,NULL,_IONBF,0);
     diag_log=f;
     struct sw_version version={.size=sizeof(version)};
     int rc=sceKernelGetSystemSwVersion(&version);
-    fprintf(f,"SERVICE_UI_V12 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
+    fprintf(f,"SERVICE_UI_V13 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
     if (rc || (version.version&0xffff0000u)!=0x09600000u) goto done;
     inventory();
     const char *kernels[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
@@ -319,7 +350,7 @@ int main(void)
     fprintf(f,"READY pid=%d auth=%p exit=%p NO_DAEMON_REGISTER\n",pid,(void *)auth,(void *)exit_app);
     unsigned waited;
     for (waited=0;waited<60;waited++) {
-        if (permit("/data/bluehen/service-ui-v12.allow",pid)) break;
+        if (permit("/data/bluehen/service-ui-v13.allow",pid)) break;
         sleep(1);
     }
     if (waited==60) {fprintf(f,"REFUSED permission timeout\n");goto done;}

@@ -1,5 +1,27 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## GUI startup investigation: 00.12 exited; 00.13 ready for testing
+
+00.12 was installed with full package readback verification. PID96 reached the
+permission gate but exited before UI_READY, without RESULT or exit logging.
+No inquiry started. The console remained responsive, own app slot/BGFT marker
+were clear, and ShellUI Bluetooth globals stayed -1/-1. Launch ticket4 was
+consumed once (0x6000150d). Neither graphics nor headset identity is confirmed.
+Private evidence: service-ui-v12-run.json/console.log/side-install.json,
+ui-v12-exit-app-slots.json and launch-BLHN00007-device-ui-v12.json.
+
+00.13 explicitly loads UserService, VideoOut and Pad before SDL, records each
+initialization stage and the first window-surface presentation result, and
+cleans up partially initialized graphics. Local SDL disassembly calls
+sceVideoOutOpen without loading VideoOut in that function; this motivates the
+change but does not establish the cause of the 00.12 exit. Six host tests and
+PKG validation passed. Physical startup remains untested; Receiver needs reopening.
+The run harness now requires both controller readiness and a successful first
+presentation, and detects process disappearance without waiting for exit logs.
+Artifact: build/service-ui-v13/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg
+SHA256: 39682d5cce7c353b293ae1a620eca501d6e0ffaebedfef5d1c1f8273acffe119
+Size: 6619136 bytes. Same stable BLHN00007; no new application title.
+
 ## Physical inquiry passed: 00.11, reboot7
 
 User supplied a UGreen headset in pairing mode. Receiver PID86/task-1 was
