@@ -8,7 +8,7 @@ $(OUT):
 
 $(OUT)/bluehen_module_probe.elf: probe.c Makefile | $(OUT)
 	@test -x "$(PS4_PAYLOAD_SDK)/bin/orbis-clang"
-	"$(PS4_PAYLOAD_SDK)/bin/orbis-clang" $(CFLAGS) -o $@ probe.c
+	"$(PS4_PAYLOAD_SDK)/bin/orbis-clang" $(CFLAGS) -lSceSysmodule -o $@ probe.c
 
 test: $(OUT)/test_probe
 	$(OUT)/test_probe

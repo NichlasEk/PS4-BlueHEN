@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[2]
 sdk = Path(os.environ.get('OO_PS4_TOOLCHAIN', '/opt/openorbis/OpenOrbis/PS4Toolchain'))
-out = root / 'build/module-app'
+out = root / 'build/module-app-v2'
 stage = out / 'stage'
 stage.mkdir(parents=True, exist_ok=True)
 env = dict(os.environ, OO_PS4_TOOLCHAIN=str(sdk), DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
@@ -31,12 +31,12 @@ def run(*args, **kwargs):
 
 run('clang', '--target=x86_64-pc-freebsd12-elf', '-fPIC', '-O2', '-Wall', '-Wextra',
     '-Werror', '-isysroot', sdk, '-isystem', sdk / 'include',
-    '-DBLUEHEN_LOG="/data/bluehen/module-app-v1.log"',
-    '-DBLUEHEN_GATE="/data/bluehen/module-app-v1.allow"',
+    '-DBLUEHEN_LOG="/data/bluehen/module-app-v2.log"',
+    '-DBLUEHEN_GATE="/data/bluehen/module-app-v2.allow"',
     '-c', root / 'research/module-probe/probe.c', '-o', out / 'main.o')
 run('ld.lld', '-m', 'elf_x86_64', '-pie', '--script=' + str(sdk / 'link.x'),
     '--eh-frame-hdr', '-z', 'max-page-size=0x4000', '-L' + str(sdk / 'lib'),
-    sdk / 'lib/crt1.o', out / 'main.o', '-lc', '-lkernel', '-o', out / 'app.elf')
+    sdk / 'lib/crt1.o', out / 'main.o', '-lc', '-lkernel', '-lSceSysmodule', '-o', out / 'app.elf')
 run(os.environ.get('CREATE_FSELF', str(sdk / 'bin/linux/create-fself')),
     '-in=' + str(out / 'app.elf'), '-out=' + str(out / 'app.oelf'),
     '--eboot', stage / 'eboot.bin', '--paid', '0x3800000000000011')
@@ -57,7 +57,7 @@ sfo.unlink(missing_ok=True)
 run(tool, 'sfo_new', sfo)
 for key, value in dict(APP_TYPE=1, ATTRIBUTE=0, DOWNLOAD_DATA_SIZE=0, SYSTEM_VER=0).items():
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Integer', '--maxsize', 4, '--value', value)
-for key, size, value in [('APP_VER', 8, '00.01'), ('VERSION', 8, '01.00'),
+for key, size, value in [('APP_VER', 8, '00.02'), ('VERSION', 8, '01.00'),
                          ('CATEGORY', 4, 'gd'), ('CONTENT_ID', 48, content),
                          ('TITLE_ID', 12, 'BLHN00001'), ('TITLE', 128, 'BlueHEN Module Test')]:
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Utf8', '--maxsize', size, '--value', value)

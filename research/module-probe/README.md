@@ -2,11 +2,34 @@
 
 This is a diagnostic, not working Bluetooth or microphone support.
 
+## Version 0.02
+
+The new app requests AudioIn (internal module ID 0x80000002) through
+`sceSysmoduleLoadModuleInternal`. The system module manager resolves its
+dependencies. After a successful load, the probe finds AudioIn in a bounded
+module inventory and resolves the three Vmic exports without calling them.
+It releases its one successful acquisition through
+`sceSysmoduleUnloadModuleInternal` and checks that AudioIn is absent afterward.
+It refuses to proceed if AudioIn was already present or inventory is uncertain.
+
+Version 0.02 retains title BLHN00001 and uses separate `module-app-v2.log`
+and `module-app-v2.allow` files under `/data/bluehen`. The build directory is
+`build/module-app-v2`; version 0.01 artifacts remain preserved separately.
+The package was built, validated, transferred to the console and read back
+with matching SHA-256:
+
+`6d93b310fa88900838c5c8370e4e538a94c1f9abaad1583cb53dde93f890a8ce`
+
+At preparation time installation/runtime verification is pending a fresh
+Receiver session; FTP delivery is not installation or successful module loading.
+The host tests now cover existing-module refusal, inventory errors, load
+failure, export-lookup failure with cleanup, and unload failure.
+
 The native binloader experiment was refused before module loading: its PID
 belonged to PartyDaemon. Do not use the binloader to run this experiment in
 a system process. The separate OpenOrbis app uses title ID **BLHN00001**.
 
-## Physical result, 2026-10-25
+## Version 0.01 physical result, 2026-10-25
 
 The app package was installed and its complete FTP readback matched:
 
@@ -49,18 +72,17 @@ directory. `CREATE_FSELF` and `LIBSSL11` can override local tool paths.
 The existing installed artifact must be kept separate from later rebuilds.
 SDK runtime files and packages stay local, outside version control.
 
-The app writes `/data/bluehen/module-app-v1.log` and waits up to 60 seconds
-for `/data/bluehen/module-app-v1.allow` containing its PID. Before allowing:
+Version 0.02 writes `/data/bluehen/module-app-v2.log` and waits up to 60 seconds
+for `/data/bluehen/module-app-v2.allow` containing its PID. Before allowing:
 verify fresh firmware/process identity, title BLHN00001, no pre-existing gate
 or log, and a fresh Vmic status baseline. Archive prior logs deliberately;
 do not interpret an old appended END marker as the current run's result.
 Remove the gate afterward and verify process exit and unchanged Vmic slots.
 
-Load/start executes each module's entrypoint. The test acquires handles and
-unloads them in reverse order, stopping on an unload failure. It resolves
-the Vmic export names but never calls their function pointers.
-Host tests cover firmware refusal, partial-load cleanup, reverse unloading
-and stop-on-unload-failure; they cannot establish the real module ABI.
+Module loading executes module entrypoints. Version 0.02 uses the matching
+system-module APIs for its acquisition and release. It resolves the Vmic
+export names but never calls their function pointers. Host tests cannot
+establish the real module ABI.
 
 The asynchronous launch-result call can return 0x80020023 (EAGAIN) before a
 final result. Poll that same pending ticket; never resubmit the launch just

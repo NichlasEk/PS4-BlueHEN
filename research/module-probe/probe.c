@@ -7,24 +7,46 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <string.h>
 #ifndef BLUEHEN_LOG
-#define BLUEHEN_LOG "/data/bluehen/module-probe-v1.log"
-#define BLUEHEN_GATE "/data/bluehen/module-probe-v1.allow"
+#define BLUEHEN_LOG "/data/bluehen/module-probe-v2.log"
+#define BLUEHEN_GATE "/data/bluehen/module-probe-v2.allow"
 #endif
 
 struct sw_version { size_t size; char text[28]; uint32_t version; };
 _Static_assert(sizeof(struct sw_version) == 40, "firmware ABI");
 int32_t sceKernelGetSystemSwVersion(struct sw_version *);
-int32_t sceKernelLoadStartModule(const char *, size_t, const void *, uint32_t, void *, int32_t *);
-int32_t sceKernelStopUnloadModule(int32_t, size_t, const void *, uint32_t, void *, int32_t *);
+/* ABI declarations from OpenOrbis kernel and Sysmodule headers. */
+int32_t sceSysmoduleLoadModuleInternal(uint32_t);
+int32_t sceSysmoduleUnloadModuleInternal(uint32_t);
 int32_t sceKernelDlsym(int32_t, const char *, void **);
-
-static const char *modules[] = {
-    "/system/common/lib/libSceIpmi.sprx",
-    "/system/common/lib/libSceAudioOut.sprx",
-    "/system/common/lib/libSceMbus.sprx",
-    "/system/common/lib/libSceAudioIn.sprx"
+struct segment { void *address; uint32_t size; int32_t prot; };
+struct module_info {
+    size_t size; char name[256]; struct segment segments[4];
+    uint32_t segment_count; uint8_t fingerprint[20];
 };
+_Static_assert(sizeof(struct module_info) == 352, "module ABI");
+int32_t sceKernelGetModuleList(uint32_t *, size_t, size_t *);
+int32_t sceKernelGetModuleInfo(uint32_t, struct module_info *);
+#define AUDIOIN_ID 0x80000002u
+
+/* Return handle, -1 for absent, -2 for failed/ambiguous inventory. */
+static int32_t audioin_handle(FILE *log)
+{
+    uint32_t handles[256]; size_t count = 0; int32_t found = -1;
+    if (sceKernelGetModuleList(handles, 256, &count) || count > 256) return -2;
+    for (size_t i = 0; i < count; i++) {
+        struct module_info info = { .size = sizeof(info) };
+        if (sceKernelGetModuleInfo(handles[i], &info)) return -2;
+        if (!memchr(info.name, 0, sizeof(info.name))) return -2;
+        fprintf(log, "MODULE handle=%u name=%s\n", handles[i], info.name);
+        if (!strcmp(info.name, "libSceAudioIn.sprx") || !strcmp(info.name, "libSceAudioIn")) {
+            if (found >= 0) return -2;
+            found = (int32_t)handles[i];
+        }
+    }
+    return found;
+}
 static const char *symbols[] = {
     "sceAudioInVmicCreate", "sceAudioInVmicWrite", "sceAudioInVmicDestroy"
 };
@@ -32,50 +54,37 @@ static const char *symbols[] = {
 int bluehen_modules(FILE *log)
 {
     struct sw_version version = { .size = sizeof(version) };
-    int32_t handles[4];
-    size_t count = 0;
-    int result = 0;
     int32_t rc = sceKernelGetSystemSwVersion(&version);
-    fprintf(log, "BLUEHEN_MODULE_PROBE_V1 pid=%d\n", (int)getpid());
+    int result = 0;
+    fprintf(log, "BLUEHEN_MODULE_PROBE_V2 pid=%d\n", (int)getpid());
     fprintf(log, "firmware rc=0x%08x code=0x%08x\n", (unsigned)rc, version.version);
-    if (rc != 0 || (version.version & 0xffff0000u) != 0x09600000u)
-        return 2;
-    for (size_t i = 0; i < 4; i++) {
-        int32_t start_result = 0;
-        fprintf(log, "LOAD_BEGIN index=%zu path=%s\n", i, modules[i]);
-        if (fflush(log) || ferror(log)) { result = 5; break; }
-        rc = sceKernelLoadStartModule(modules[i], 0, NULL, 0, NULL, &start_result);
-        fprintf(log, "LOAD_END index=%zu handle=0x%08x entry_result=0x%08x\n",
-                i, (unsigned)rc, (unsigned)start_result);
-        if (rc < 0) { result = 3; break; }
-        handles[count++] = rc;
-        if (start_result != 0) { result = 3; break; }
+    if (rc || (version.version & 0xffff0000u) != 0x09600000u) return 2;
+    if (audioin_handle(log) != -1) {
+        fprintf(log, "REFUSED AudioIn already present or inventory uncertain\n");
+        return 8;
     }
-    if (count == 4 && result == 0) {
-        for (size_t i = 0; i < 3; i++) {
-            void *address = NULL;
-            rc = sceKernelDlsym(handles[3], symbols[i], &address);
-            fprintf(log, "LOOKUP name=%s rc=0x%08x resolved=%s\n",
-                    symbols[i], (unsigned)rc, rc == 0 && address ? "yes" : "no");
-            if (rc || !address) result = 4;
-        }
+    fprintf(log, "SYSMODULE_LOAD_BEGIN id=0x%08x\n", AUDIOIN_ID);
+    if (fflush(log) || ferror(log)) return 5;
+    rc = sceSysmoduleLoadModuleInternal(AUDIOIN_ID);
+    fprintf(log, "SYSMODULE_LOAD_END rc=0x%08x\n", (unsigned)rc);
+    if (rc) return 3;
+    /* The module manager owns dependency loading. Release exactly our one
+     * successful acquisition with the same API, never raw kernel unload. */
+    int32_t handle = audioin_handle(log);
+    if (handle < 0) result = 4;
+    else for (size_t i = 0; i < 3; i++) {
+        void *address = NULL;
+        rc = sceKernelDlsym(handle, symbols[i], &address);
+        fprintf(log, "LOOKUP name=%s rc=0x%08x resolved=%s\n",
+                symbols[i], (unsigned)rc, !rc && address ? "yes" : "no");
+        if (rc || !address) result = 4;
     }
-    /* Only release handles acquired here, in reverse dependency order.
-     * On unload failure stop: dependencies might still be in use. */
-    while (count) {
-        int32_t stop_result = 0;
-        int32_t handle = handles[--count];
-        fprintf(log, "UNLOAD_BEGIN handle=0x%08x\n", (unsigned)handle);
-        fflush(log);
-        rc = sceKernelStopUnloadModule(handle, 0, NULL, 0, NULL, &stop_result);
-        fprintf(log, "UNLOAD_END rc=0x%08x entry_result=0x%08x\n",
-                (unsigned)rc, (unsigned)stop_result);
-        if (rc < 0 || stop_result != 0) {
-            fprintf(log, "CLEANUP_UNCONFIRMED remaining=%zu; process exit required\n", count);
-            result = 6;
-            break;
-        }
-    }
+    fprintf(log, "SYSMODULE_UNLOAD_BEGIN id=0x%08x\n", AUDIOIN_ID);
+    fflush(log);
+    rc = sceSysmoduleUnloadModuleInternal(AUDIOIN_ID);
+    fprintf(log, "SYSMODULE_UNLOAD_END rc=0x%08x\n", (unsigned)rc);
+    if (rc) result = 6;
+    else if (audioin_handle(log) != -1) result = 9;
     fprintf(log, "NO_VMIC_CALLS NO_ROUTING_CALLS NO_BLUETOOTH_CALLS\n");
     return result;
 }
