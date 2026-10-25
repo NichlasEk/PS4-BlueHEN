@@ -72,7 +72,8 @@ Our observed0x8094000f therefore differs from that local initialization failure;
 its precise transport/service rejection remains unresolved. The body analysis
 is offline; only the resolved export prefix was compared in this run.
 
-Next trace command0x30031 and its registration requirements. Do not infer that
+Command0x30031 has now been traced and its gate verified against live code;
+see [DAEMON-REGISTER-960.md](../DAEMON-REGISTER-960.md). Do not infer that
 gdd metadata grants runtime capabilities, repeat the same call, or add microphone
 calls before registration has an understood execution context.
 
