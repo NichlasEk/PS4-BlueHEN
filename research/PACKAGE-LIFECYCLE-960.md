@@ -1,5 +1,46 @@
 # Package cleanup and lifecycle on firmware9.60
 
+## Reboot7: normal-category exit verified twice
+
+00.09 replaced the hash-matched00.08 through fresh verified ShellUI RPC
+(AppUnInstall0); Receiver installation and full package readback matched
+592df88c3965c1f5bce3e0aaee08eb399cd85ce1e86b8f25d4eea39e33c7526e.
+Only BLHN00007 is installed. A fresh ShellCore RPC submitted the launch.
+
+PID71 matched its private profile, passed the PID-bound permission and stop gates,
+and exited via LoadExec. The BGFT own-title list became empty. An independent
+read of the six ProcessStarter slots found no own record and slot1 inactive.
+After consuming ticket0 once, the exact installed package was launched again
+without reboot or reinstall: PID75 repeated the same successful exit and both
+independent state checks were clear. Ticket1 consumed once. No daemon registration,
+audio or Bluetooth calls occurred. This proves repeated lifecycle for this gd
+baseline; it does not prove background daemon behavior or headset support.
+
+A fresh read-only app.db snapshot reports category=gd and canRemove=1 for
+BLHN00007 in all four user browse tables. This is database evidence for menu
+removability, not a user-observed menu deletion. Replacement AFTER these runs
+has not yet been tested. Receiver stopped responding after foreground app use;
+the user was asked to close/open Receiver, without rebooting the console.
+
+Private evidence: reboot7-debugger-load.json, replace-v08-for-exit-v9-reboot7.json,
+service-exit-v9-side-install.json, reboot7-shellcore-session.json,
+service-exit-v9-run.json, service-exit-v9-repeat-run.json,
+exit-v9-app-slots.json, exit-v9-repeat-app-slots.json,
+normal-category-v9/browse-flags.json. Raw databases remain private.
+
+Next candidate00.10 keeps gd/stable BLHN00007 and the same auth profile, with
+NO daemon registration. It performs the bounded registered-info BT query from
+the existing ABI research, logs no device names/addresses, closes its own fd,
+and exits through LoadExec. No scan, pair, connect, disconnect or audio calls.
+Build, signature and package validation passed; existing4 tests passed.
+Artifact build/service-bt-v10/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg,
+6619136 bytes, SHA256
+678d7138a6dc355b5c1776c56945dc7a104d87c8021f073413fab37938b7f0ab.
+NOT installed/run yet. Preserve exact accepted00.09 package. Before replacement
+require Receiver readiness, empty own started list, no own process, and exact
+installed00.09 hash; local replace_v09_for_bt_v10.py and the install/launch/run
+normal_bt_v10 scripts are prepared for this boot's fresh verified sessions.
+
 ## Reboot6: 00.08 refused before registration; normal-category baseline ready
 
 The user confirmed that the prior relaunch froze the console, then rebooted it.
