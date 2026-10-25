@@ -1,0 +1,84 @@
+"""Exercise selected-device connection ownership/cleanup with a fake driver."""
+import pathlib
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+
+class ConnectProbe(unittest.TestCase):
+    def test_connection_boundaries(self):
+        cc = shutil.which('cc')
+        if not cc:
+            self.skipTest('C compiler unavailable')
+        source = r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+struct bt_event {uint8_t type,status,reserved[2];uint32_t value;uint64_t address;};
+struct bt_kevent {uint64_t ident;int16_t filter;uint16_t flags;uint32_t fflags;int64_t data;void *udata;};
+static int mode,active,started,ended,closed,deleted,ui_cancel,ui_running=1,frames;
+static const uint64_t target=0x123456;
+static int mock_open(const char *p,int flags) {(void)p;assert(flags==(O_RDWR|O_NONBLOCK));return 7;}
+static ssize_t mock_write(int fd,const void *p,size_t n) {assert(fd==7 && n==8 && *(const uint64_t*)p==0xfe);return n;}
+static int mock_close(int fd) {assert(fd==7 || fd==8);closed++;return 0;}
+static int mock_sleep(unsigned int us) {assert(us==50000);return 0;}
+static int mock_ioctl(int fd,unsigned long request,const uint64_t *addr) {
+ assert(fd==7 && *addr==target);
+ if(request==0x80086203UL) {
+  if(!started)return mode==1?3:1;
+  if(ended)return mode==8?2:1;
+  return mode==0 || mode==11?3:2;
+ }
+ if(request==0x8008620aUL) {started++;if(mode==2){errno=EIO;return -1;}active=1;return 0;}
+ assert(request==0x8008620bUL && active);ended++;active=0;return 0;
+}
+static int bt_kqueue(void) {return 8;}
+static int bt_kevent(int q,const struct bt_kevent *c,int n,void *e,int count,void *t) {
+ (void)e;(void)t;assert(q==8 && n==1 && count==0 && c->ident==7);
+ if(c->flags==2)deleted++;else assert(c->flags==1);return 0;
+}
+static int next_event(int q,int fd,struct bt_event *e) {
+ assert(q==8 && fd==7);
+ if(!active){if(mode==9){e->type=1;return 1;}return 0;}
+ if(mode==3)return -1;
+ e->address=target;
+ if(mode==4){e->type=3;return 1;}
+ if(mode==5){e->type=5;e->status=5;return 1;}
+ if(mode==11){e->type=5;e->status=5;e->address=0xabcdef;return 1;}
+ return 0;
+}
+static void ui_frame(void) {frames++;if(mode==6 && active)ui_cancel=1;if(mode==10)ui_cancel=1;}
+#define open mock_open
+#define write mock_write
+#define close mock_close
+#define usleep mock_sleep
+#define ioctl mock_ioctl
+#include "bt_connect_probe.h"
+int main(void) {
+ FILE *f=tmpfile();assert(f);
+ const int expected[]={0,58,59,61,63,64,57,60,67,56,57,0};
+ for(mode=0;mode<12;mode++) {
+  active=started=ended=closed=deleted=ui_cancel=frames=0;
+  assert(connection_probe(f,target,0x240404)==expected[mode]);
+  int owns=mode!=1 && mode!=2 && mode!=9 && mode!=10;
+  assert(ended==owns);assert(closed==2 && deleted==1);
+ }
+ started=ended=closed=0;
+ assert(connection_probe(f,target,0x2508)==51);
+ assert(connection_probe(f,0,0x404)==51);
+ assert(!started && !ended && !closed);
+ fclose(f);return 0;
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp)
+            (p/'probe.c').write_text(source)
+            subprocess.run([cc, '-std=c11', '-Wall', '-Wextra', '-Werror',
+                            '-I', str(pathlib.Path(__file__).parent),
+                            str(p/'probe.c'), '-o', str(p/'probe')],
+                           check=True, capture_output=True)
+            subprocess.run([str(p/'probe')], check=True, timeout=5)

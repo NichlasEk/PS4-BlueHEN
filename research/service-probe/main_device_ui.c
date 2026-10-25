@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Bounded own-descriptor inquiry. No pairing, connection or audio. */
+/* Bounded own-descriptor inquiry. Discovery and selected-device connection diagnostic; no audio. */
 #define BLUEHEN_MODULE_HOST_TEST
 #include "../module-probe/probe.c"
 #include <stdint.h>
@@ -42,10 +42,10 @@ static int next_event(int queue,int fd,struct bt_event *event)
 }
 
 static int permit(const char *path,int pid);
-struct ui_device { uint64_t address; char name[121]; };
+struct ui_device { uint64_t address; uint32_t device_class; char name[121]; };
 static struct ui_device ui_devices[32];
 static unsigned ui_count;
-static int ui_focus,ui_selected=-1,ui_running=1,ui_scanning,ui_cancel,ui_want_scan;
+static int ui_focus,ui_selected=-1,ui_running=1,ui_scanning,ui_cancel,ui_want_scan,ui_want_connect;
 static SDL_Window *ui_window;
 static SDL_Renderer *ui_renderer;
 static int ui_pad=-1;
@@ -82,10 +82,11 @@ static void ui_frame(void)
             if((pressed&ORBIS_PAD_BUTTON_DOWN) && ui_focus+1<(int)ui_count)ui_focus++;
             if((pressed&ORBIS_PAD_BUTTON_CROSS) && ui_count){ui_selected=ui_focus;fprintf(diag_log,"UI_SELECTED slot=%d\n",ui_selected);}
             if(pressed&ORBIS_PAD_BUTTON_TRIANGLE)ui_want_scan=1;
+            if((pressed&ORBIS_PAD_BUTTON_SQUARE) && ui_selected>=0)ui_want_connect=1;
         }
     }
     if(SDL_GetTicks()-ui_last_input>300000u){ui_running=0;ui_cancel=1;}
-    if(permit("/data/bluehen/service-ui-v13.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
+    if(permit("/data/bluehen/service-ui-v14.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
     ui_box(0,0,1280,720,10,17,30);ui_box(0,0,1280,5,56,174,245);
     ui_text(55,42,4,"BlueHEN",235,244,255);ui_text(58,104,2,"Bluetooth-enheter",130,170,200);
     ui_text(58,153,2,ui_status,210,225,240);
@@ -101,10 +102,10 @@ static void ui_frame(void)
         char name[30];snprintf(name,sizeof(name),"%.25s",ui_devices[ui_selected].name);ui_text(875,296,2,name,240,245,255);
     } else ui_text(875,296,2,"Ingen enhet vald",180,195,210);
     ui_text(875,357,2,"Inte ansluten",245,185,100);
-    ui_text(875,410,2,"Parkoppling kommer",150,170,190);ui_text(875,439,2,"i nasta steg.",150,170,190);
+    ui_text(875,410,2,"FYRKANT: anslutningstest",150,170,190);ui_text(875,439,2,"Kopplar ned efter test.",150,170,190);
     ui_text(875,495,2,"Ljud / mikrofon:",150,170,190);ui_text(875,524,2,"inte klara annu",150,170,190);
-    ui_text(58,636,2,"UPP/NER  Navigera    X  Valj    TRIANGEL  Sok",210,225,240);
-    ui_text(58,678,2,ui_scanning?"CIRKEL  Avbryt sokning":"CIRKEL / OPTIONS  Avsluta",140,165,190);
+    ui_text(58,636,2,"UPP/NER  Navigera   X  Valj   TRIANGEL  Sok   FYRKANT  Testa",210,225,240);
+    ui_text(58,678,2,ui_scanning?"CIRKEL  Avbryt test/sokning":"CIRKEL / OPTIONS  Avsluta",140,165,190);
     SDL_RenderPresent(ui_renderer);
     int present_rc=SDL_UpdateWindowSurface(ui_window);
     static int first_frame;
@@ -180,6 +181,7 @@ static int inquiry(FILE *f)
                 while(slot<unique && addresses[slot]!=event.address) slot++;
                 if(slot==unique && event.address && unique<32) {
                     addresses[unique++]=event.address;ui_devices[ui_count].address=event.address;
+                    ui_devices[ui_count].device_class=event.value;
                     snprintf(ui_devices[ui_count].name,sizeof(ui_devices[ui_count].name),"Enhet %u (namn okant)",ui_count+1);ui_count++;
                 }
                 fprintf(f,"BT_INQUIRY_RESULT slot=%u status=%u value=0x%08x address_present=%d\n",slot,event.status,event.value,event.address!=0);
@@ -214,6 +216,8 @@ static int inquiry(FILE *f)
     fprintf(f,"BT_SUMMARY events=%u inquiry_results=%u unique=%u NO_NAMES_OR_ADDRESSES\n",events,results,unique);
     return status;
 }
+
+#include "bt_connect_probe.h"
 
 static int gui_run(FILE *f)
 {
@@ -256,6 +260,19 @@ static int gui_run(FILE *f)
             if(rc==0)snprintf(ui_status,sizeof(ui_status),"%u enheter hittades. Valj utrustning med UPP/NER och X.",ui_count);
             else snprintf(ui_status,sizeof(ui_status),"Sokningen kunde inte slutforas. Resultat %d.",rc);
             if(rc==30 || rc==34){outcome=rc;ui_running=0;fprintf(f,"UI_EXIT cleanup/integrity failure; no retry\n");}
+        }
+        if(ui_want_connect && ui_running) {
+            ui_want_connect=0;
+            if(ui_selected>=0 && ui_selected<(int)ui_count) {
+                ui_scanning=1;snprintf(ui_status,sizeof(ui_status),"Testar vald ljudenhet. CIRKEL avbryter. Kopplar sedan ned.");
+                int rc=connection_probe(f,ui_devices[ui_selected].address,ui_devices[ui_selected].device_class);
+                ui_scanning=0;ui_last_input=SDL_GetTicks();
+                if(rc==0)snprintf(ui_status,sizeof(ui_status),"Anslutning lyckades! Testet kopplade ned. Ljud/mikrofon aterstar.");
+                else if(rc==51)snprintf(ui_status,sizeof(ui_status),"Valj en ljudenhet for anslutningstestet.");
+                else if(rc==63)snprintf(ui_status,sizeof(ui_status),"Enheten begar PIN/bekraftelse. Testet avbrot parkopplingen.");
+                else snprintf(ui_status,sizeof(ui_status),"Anslutningstest resultat %d. Se diagnostikloggen.",rc);
+                if(rc>=67){outcome=rc;ui_running=0;}
+            }
         }
         SDL_Delay(33);
     }
@@ -312,13 +329,13 @@ int main(void)
 {
     int (*exit_app)(const char *,const char **)=NULL;
     int pid=(int)getpid(),status=1,system_owned=0;
-    FILE *f=fopen("/data/bluehen/service-ui-v13.log","a");
+    FILE *f=fopen("/data/bluehen/service-ui-v14.log","a");
     if (!f) return 1;
     setvbuf(f,NULL,_IONBF,0);
     diag_log=f;
     struct sw_version version={.size=sizeof(version)};
     int rc=sceKernelGetSystemSwVersion(&version);
-    fprintf(f,"SERVICE_UI_V13 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
+    fprintf(f,"SERVICE_UI_V14 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
     if (rc || (version.version&0xffff0000u)!=0x09600000u) goto done;
     inventory();
     const char *kernels[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
@@ -350,7 +367,7 @@ int main(void)
     fprintf(f,"READY pid=%d auth=%p exit=%p NO_DAEMON_REGISTER\n",pid,(void *)auth,(void *)exit_app);
     unsigned waited;
     for (waited=0;waited<60;waited++) {
-        if (permit("/data/bluehen/service-ui-v13.allow",pid)) break;
+        if (permit("/data/bluehen/service-ui-v14.allow",pid)) break;
         sleep(1);
     }
     if (waited==60) {fprintf(f,"REFUSED permission timeout\n");goto done;}

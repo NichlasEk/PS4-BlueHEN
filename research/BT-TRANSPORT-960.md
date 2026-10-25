@@ -1,5 +1,47 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## GUI accepted and selected-device connection diagnostic 00.14
+
+The user confirmed 00.13 works on the TV. Its physical log records 17 inquiry
+results, three unique devices, three successful guarded name queries, scan
+result0 and UI_SELECTED slot1. Names/addresses remain unlogged. Later the own
+app slot and BGFT marker were clear; there is no UI_CLOSED/RESULT/exit log, so
+normal in-app shutdown is not established. Preserve the exact 00.13 package.
+
+00.14 adds Square for a bounded connection test of the selected audio-class
+entry. This is a diagnostic, not persistent connection or audio support.
+The test owns its fd/queue, uses a passive conflict check, and requires the
+selected address to report DISCONNECTED before StartConnect. Existing
+connections are not changed. Controller/non-audio classes and zero addresses
+are refused. Events from other addresses cannot complete or fail the test.
+PIN/user-confirmation events stop the attempt without guessing credentials or
+sending acceptance. Every successfully submitted attempt requests disconnect
+of only its selected address, then verifies DISCONNECTED before releasing its
+queue/fd. Failure to establish cleanup closes the UI rather than retrying.
+Registration records are never deleted; pairing may leave a registration.
+
+ABI verified from own-console native wrappers: GetConnectingInfo0x3a2ad0,
+StartConnect0x3a2c60, StartDisconnect0x3a2cb0 each pass pointer-to-u64 address.
+Requests are0x80086203/0x8008620a/0x8008620b. Managed fields2283..2288 define
+states1=disconnected,2=connecting,3=connected,4=disconnecting,5=streaming,
+6=stopping. Fields2227..2230 define PIN3, confirmation4, connect-result5,
+disconnect6. Major-device-class mask0x1f00 and audio/video0x400 come from
+fields2315/2333. These are ABI evidence, not proof of generic audio transport.
+
+Seven host tests pass, including connection ownership, rejection, foreign
+address events, cancellation, timeout, PIN request and failed cleanup. PKG
+validation passes. Same BLHN00007, version00.14,6619136 bytes, SHA256
+05cd9ecb4b9ebb58cc68e4b9de548732df0d5737ed791f632a1fa346b0aa9811.
+Artifact: build/service-ui-v14/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg.
+Receiver PID105/task-1 verified;00.13 hash-checked/uninstalled return0;00.14
+installed with matching full readback. PID108 reached READY; the first monitor
+transport timed out before permission. A fresh verified observation resumed
+that same process gate without relaunch. UI_READY pad_ok1 and first presentation0
+then passed; ticket6 consumed once0x6000190d. The app is open awaiting the user's
+Square test. Physical connection test still pending. Private journals include
+service-ui-v14-run.json, service-ui-v14-resume-gate.json and the installation/
+launch journals. No console reboot was performed.
+
 ## 00.13 physical startup reached first presentation
 
 Receiver PID99/task-1 was verified. The hash-matched 00.12 was uninstalled

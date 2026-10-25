@@ -23,7 +23,7 @@ class InquiryCleanup(unittest.TestCase):
         if gui:
             core = source[source.index('struct bt_event {'):source.index('static int permit(')]
             core += r"""
-struct ui_device {uint64_t address;char name[121];};
+struct ui_device {uint64_t address;uint32_t device_class;char name[121];};
 static struct ui_device ui_devices[32];
 static unsigned ui_count;
 static int ui_focus,ui_selected,ui_cancel,ui_running=1;
@@ -31,7 +31,7 @@ static char ui_status[128];
 static void ui_frame(void) {if(mode==6 || (mode==7 && active))ui_cancel=1;}
 static int ui_names(FILE *f,int fd) {(void)f;assert(fd==7);return 0;}
 """
-            core += source[source.index('static int inquiry('):source.index('static int gui_run(')]
+            core += source[source.index('static int inquiry('):source.index('#include "bt_connect_probe.h"')]
         prelude = r'''
 #include <stdint.h>
 #include <stddef.h>
