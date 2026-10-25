@@ -27,7 +27,8 @@ reuse this PID or any address without fresh identity/mapping checks.
   system-process classification byte at+20.
 - Client registration at0x7ed02 fills those fields. Classification calls
   the process-based helper0x8c4d0. The helper examines process information
-  returned by a kernel import; that import's full ABI/name remains unresolved.
+  returned by get_authinfo (NID igMefp4SAv0). The later live import and
+  capability check is documented in SERVICE-DESIGN-960.md.
 - A separate exception path checks `sceKernelIsKratos` and another
   process predicate at0x8c710. It is not a general ordinary-app fallback.
 - Rejection at0x7da67 emits a diagnostic saying the caller is not a system
@@ -95,9 +96,9 @@ so the exact executed rejection branch remains an inference.
 ## Next work
 
 Repeated Create/Destroy experiments now have little diagnostic value.
-Identify the process-information import used by classification and audit the
-supported native service/plugin execution context before selecting an
-integration design. A normal homebrew app has not demonstrated permission to
+The process-information import is now identified and live-verified as
+get_authinfo; see SERVICE-DESIGN-960.md. Next establish an independently owned
+service lifecycle and its actual authorization before microphone integration. A normal homebrew app has not demonstrated permission to
 send this driver notification. A broker/service design would need explicit
 resource ownership, process-lifetime cleanup and compatibility with GoldHEN;
 its feasibility is not yet established. Do not disguise the ordinary app as a
