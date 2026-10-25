@@ -40,7 +40,7 @@ Built and package-validated on 2026-10-25:
 - build/service-app-v1/IV0000-BLHN00002_00-BLUEHENSERVICE01.pkg
 - 6619136 bytes
 - SHA-256: 4ec77bb05d05b27d32ebf759460c16357dca12fdbec2b1f178d45f4e51f05b6b
-- FTP staging and full readback matched; not yet installed or run.
+- FTP staging and installed-package full readback matched. See physical result below.
 
 Build from the repository root with:
 
@@ -49,6 +49,37 @@ python3 -B research/service-probe/build_pkg.py
 ```
 
 Keep this artifact unchanged during testing. Runtime modules remain local.
+
+## Physical result, 2026-10-25
+
+Fresh Receiver PID134 installed the exact package above; installed app.pkg
+readback matched. Launch ticket8 completed with app ID0x60002a0d. The process
+was BLHN00002 PID137, parent PID38 (SceSysCore). Runtime get_authinfo returned0
+with caps[0] bit62 clear. Resolved RegisterDaemon/get_authinfo pointers and
+code prefixes matched the local firmware before the PID gate was supplied.
+
+One main-thread RegisterDaemon returned **0x8094000f**. The app logged
+END result=2 and exited; both control files were absent/removed afterward.
+No heartbeat loop, second-title launch, explicit stop acceptance or background
+survival was tested because registration failed. Installation of category gdd
+and a separate PID are verified, but a working daemon is not.
+
+Offline inspection of this console's libSceSystemService shows the export at
+0x4d70 jumping through0x5c00 to0x9d40. That wrapper returns0x80940001 when its
+initialization count is nonpositive. Otherwise it reaches the IPC stub0xd710,
+which sends command0x30031 and propagates transport or service result.
+Our observed0x8094000f therefore differs from that local initialization failure;
+its precise transport/service rejection remains unresolved. The body analysis
+is offline; only the resolved export prefix was compared in this run.
+
+Next trace command0x30031 and its registration requirements. Do not infer that
+gdd metadata grants runtime capabilities, repeat the same call, or add microphone
+calls before registration has an understood execution context.
+
+Private evidence: ../review/live-229/service-app-v1-install.json,
+service-v1-run.json, service-v1-console.log,
+launch-BLHN00002-service-v1.json and register-daemon-metadata.json.
+Ticket8 is fully consumed and must not be consumed again.
 
 ## Console acceptance sequence
 
