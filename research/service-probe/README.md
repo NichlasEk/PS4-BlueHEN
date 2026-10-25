@@ -260,3 +260,32 @@ Next: a separately gated, bounded Vmic create/destroy probe within this own
 registered process, with before/after audiod slot checks and exact-handle cleanup.
 Registration success does not prove audio access, PCM delivery, headset output,
 microphone capture, Bluetooth pairing, or party/game routing.
+
+## 2026-10-25: 0.05 Vmic lifecycle prepared, not installed
+
+`main_auth_vmic.c` retains the verified 0.04 auth check and registration gate,
+then acquires AudioIn within its own process. A second PID-specific permission
+file gates one VmicCreate(0,128,16000,1). The supervisor must verify the exact
+live Create/Destroy code and empty audiod slots before granting that permission.
+Cleanup uses the observed own-PID slot handle, including the known case where
+Create returns an error but allocates a slot. A positive, structurally valid
+returned handle provides a bounded fallback. No handle is guessed on failure.
+The app releases its acquired AudioIn and SystemService modules before exit.
+There are no PCM writes, Bluetooth or routing calls.
+
+Built and PKG/signature validated: BLHN00006 00.05, 6619136 bytes,
+SHA-256 `60ddc2b43cd25e8603d258e849e0d5fda8b9a9b024d3ab2d9c91c1be284d794f`.
+Four auth-profile host tests and ten existing Vmic metadata/lifecycle tests pass;
+these do not prove execution of the new app on hardware.
+Local prepared supervisor: `review/live-229/run_service_app_v5.py SESSION_JSON`;
+installer `install_service_app_v5.py`; launch helper `launch_service_v5_cycle.py`.
+They have not run this package on the console.
+
+While preparing installation, launch of the older ordinary app BLHN00001 was
+submitted once (reboot3 ticket2) to cycle Receiver as in the UT99 workflow.
+Debugger/FTP/Receiver ports subsequently refused connections. No ticket result
+was consumed, and no Receiver relaunch reached submission. This occurred without
+startup result polling, so polling alone cannot explain the previous failures.
+Console UI/freeze status is awaiting the user; no reboot or payload retry sent.
+Do not repeat this title cycle blindly. After a confirmed new boot, re-establish
+a fresh session and use the newly opened Receiver to install 0.05 directly.
