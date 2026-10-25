@@ -114,3 +114,19 @@ select UGreen with X, Square, then X on confirmation. The GUI may idle-exit afte
 five minutes. Do not relaunch until process/slot/BGFT cleanup is verified.
 Private journals: service-ui-v16-policy-run.json, service-ui-v16-policy-console.log,
 launch-BLHN00007-device-ui-v16-policy.json, bt-target-policy-observation.json.
+
+## Follow-up physical observation
+
+The policy5 run captured the selected HP206 in connection slot 1, cache slot 8.
+Connection flags progressed 0x1 -> 0x11 -> 0x13; record flags changed from
+0x880000 to 0x882000. Services remained 0x38 and vendor/product/source were zero.
+Neither the existing-state bypass nor the special-record bit was set. The GUI
+accepted confirmation (reply 0), then received event 5/status 255/value
+0x802f3403. Disconnect and queue/descriptor cleanup succeeded.
+
+This confirms that the live target state fails the examined admission predicate;
+it is not an instruction-pointer trace and does not distinguish the two error
+sites. The preceding policy3 attempt instead returned status 4/value 0 without
+confirmation, so application result 64 alone must not identify the cause.
+Private evidence: bt-target-policy5-observation.json and
+service-ui-v16-policy5-result.log. No kernel change was made.

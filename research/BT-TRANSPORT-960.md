@@ -6,9 +6,23 @@ See [BT-KERNEL-POLICY-960.md](BT-KERNEL-POLICY-960.md) for the read-only kernel
 capture, both0x802f3403 sites, the HP206 cache record and40 offline predicate
 checks. Kernel-read capability was found in an existing sibling tool; the earlier
 limitation below is superseded. No kernel write or payload reload was performed.
-00.16 remains the installed package; one verified relaunch reached PID124.
-Live target-state monitoring did not observe a new attempt during its bounded
-window. Actual headset connection/audio/microphone remain unproved.
+The later policy5 monitor captured HP206 state during the confirmed rejection;
+see the follow-up observation in the linked report. Actual headset
+connection/audio/microphone remain unproved.
+
+## 0.17 manual startup
+
+The GUI no longer waits for a host-created PID permission file. It opens after
+its local firmware, complete authorization-profile and required-export checks.
+Discovery and connection still require controller actions; no pairing starts
+on launch. With a working controller, the menu stays open until explicitly
+closed. The five-minute fallback remains when controller initialization fails,
+and the PID-scoped stop file remains available for diagnostics.
+
+Version 0.17 retains title BLHN00007/category gd, replacing the existing icon.
+Log/stop paths use service-ui-v17. Seven host tests and PKG validation passed;
+installation and physical manual-start verification remain pending.
+Package SHA-256: c52c634d8d9372f70fe7761e738648094a9c24ef6836dbea4daa0a0a65b2df59.
 
 ## Hardware context and stock-call comparison
 
