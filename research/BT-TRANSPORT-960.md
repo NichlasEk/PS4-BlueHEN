@@ -1,5 +1,15 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## Kernel admission checks located; offline prototype tested
+
+See [BT-KERNEL-POLICY-960.md](BT-KERNEL-POLICY-960.md) for the read-only kernel
+capture, both0x802f3403 sites, the HP206 cache record and40 offline predicate
+checks. Kernel-read capability was found in an existing sibling tool; the earlier
+limitation below is superseded. No kernel write or payload reload was performed.
+00.16 remains the installed package; one verified relaunch reached PID124.
+Live target-state monitoring did not observe a new attempt during its bounded
+window. Actual headset connection/audio/microphone remain unproved.
+
 ## Hardware context and stock-call comparison
 
 User identifies the console as an original PS4 (exact CUH model unknown), and
