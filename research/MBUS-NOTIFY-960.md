@@ -60,15 +60,54 @@ not established. Do not silently call this a successful classification test.
 The gate file was never issued. Ticket5 final result was retrieved; do not
 consume it again.
 
-## Next discriminating experiment
+## Ordinary-main-thread observation, 2026-10-25
 
-Run the same lifecycle on the application's ordinary main thread, with
-external slot observation and cleanup, instead of treating a debugger RPC
-thread as representative. Capture initialization and process/session identity
-in that experiment. If the same service rejection remains, investigate a
-properly scoped native service/driver integration for the eventual plugin.
-Do not retry the current failing registration or add PCM/routing operations
-before the session mismatch is explained.
+The unchanged, hash-verified version00.03 package was launched as fresh
+BLHN00001 PID131. No RPC was installed in the test process. The supervisor
+verified the service identity, current mappings, local ELF hash and live
+handler/registration/classification code before reading the client table.
+Each observation used two equal 768-byte table reads; these are snapshots,
+not an atomic trace of the service handler.
+
+| Observation | Test process in Mbus client table |
+| --- | --- |
+| Before Create, app waiting at gate | No row |
+| After Create returned 0x809b00ff | Row10, owner131, system flag0, other flags1/0 |
+| After Destroy returned 0x809b00ff | Same row and classification |
+| After logged END and process exit | No row |
+
+Ten pre-existing clients had system flag1 throughout these observations.
+Create allocated Vmic slot0 to PID131 with handle0x40300, 128 frames,
+16000 Hz and one channel. Ownership was checked again before supplying
+that handle to the app's single main-thread Destroy. All four Vmic slots
+were inactive after Destroy and after process exit. END result=4 was logged;
+both control files were removed. No PCM, routing, Bluetooth or service writes
+were performed. Ticket7 reached final result0x6000270d and is consumed.
+
+This establishes the previously missing classification observation: the
+ordinary app does register, but its observed system-process flag is zero.
+The earlier lack of a row after MbusInit alone does not establish a failed
+registration; registration was observable after Create in this experiment.
+The zero flag plus matching handler code strongly supports rejection at the
+system-process gate. No instruction trace or service diagnostic was captured,
+so the exact executed rejection branch remains an inference.
+
+## Next work
+
+Repeated Create/Destroy experiments now have little diagnostic value.
+Identify the process-information import used by classification and audit the
+supported native service/plugin execution context before selecting an
+integration design. A normal homebrew app has not demonstrated permission to
+send this driver notification. A broker/service design would need explicit
+resource ownership, process-lifetime cleanup and compatibility with GoldHEN;
+its feasibility is not yet established. Do not disguise the ordinary app as a
+system process or patch the service flag as a substitute for that design.
+Bluetooth headset transport remains a separate unresolved requirement.
+
+New private evidence: vmic-main-v3-mbus-run.json,
+vmic-main-v3-mbus-console.log and launch-BLHN00001-vmic-main-v3-mbus.json.
+The original v3 console log was archived as vmic-main-v3-first.log on console;
+the current vmic-main-v3.log belongs to PID131.
 
 Raw local evidence under `../review/live-229/`: mbus-service-code-checks.json,
 mbus-classification-run.json, mbus-classification-observation.json,
