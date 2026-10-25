@@ -1,5 +1,19 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## 00.15 installed and running; confirmation test pending
+
+Receiver PID111/task-1 and the same reboot7 session were verified. The
+hash-matched 00.14 was uninstalled (return0);00.15 installed on BLHN00007 with
+full readback matching6f21821e89140008b45fcca5581f5f48c1422d6db5152ee2292084414461b82b.
+Own PID114 passed auth/code gates, reported UI_READY pad_ok1 and first
+presentation0. ShellUI BT globals stayed -1/-1. Launch ticket7 consumed once
+(0x60001b0d). The app remains open for the user to select the headset, press
+Square and accept its confirmation with X. No console reboot was performed.
+Confirmation reply, completed connection and cleanup still await this test;
+headset audio/microphone remain unimplemented. Private evidence:
+replace-v14-for-ui-v15.json, service-ui-v15-side-install.json,
+service-ui-v15-run.json/console.log, launch-BLHN00007-device-ui-v15.json.
+
 ## 00.14 reached confirmation; 00.15 adds explicit on-screen acceptance
 
 Physical 00.14: scan result0/count2, selected slot1, GetConnectingInfo returned1,
