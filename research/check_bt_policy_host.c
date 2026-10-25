@@ -13,12 +13,13 @@ extern int call_gate(void *node);
 /* Candidate is exercised ONLY in this host process, never on the console.
  * Synthetic target, not the user's Bluetooth address. Preserve scratch regs. */
 __asm__(".text\n.global candidate_gate\ncandidate_gate:\n"
- "cmpl $0x40,0x20(%rax)\nje 1f\npush %r11\n"
- "movabs $0x112233445566,%r11\ncmp %r11,(%rax)\njne 2f\n"
+ "cmpl $0x40,0x20(%rax)\nje 1f\npush %r11\npush %r10\n"
+ "mov (%rax),%r11\nshl $16,%r11\nshr $16,%r11\n"
+ "movabs $0x112233445566,%r10\ncmp %r10,%r11\njne 2f\n"
  "mov 8(%rax),%r11d\nand $0x1f00,%r11d\ncmp $0x400,%r11d\njne 2f\n"
  "testl $0x40,0x20(%rax)\njnz 2f\ntestl $8,0x20(%rax)\njz 2f\n"
- "pop %r11\n1: jmp 0x5b2efa\n"
- "2: pop %r11\njmp 0x5b2f24\n");
+ "pop %r10\npop %r11\n1: jmp 0x5b2efa\n"
+ "2: pop %r10\npop %r11\njmp 0x5b2f24\n");
 extern void candidate_gate(void);
 static void put32(unsigned char *p,uint32_t v){memcpy(p,&v,4);}
 static void put64(unsigned char *p,uint64_t v){memcpy(p,&v,8);}
@@ -49,9 +50,9 @@ int main(int argc,char **argv){
    code[0xef4]=0xe9;put32(code+0xef5,(uint32_t)(int32_t)delta);code[0xef9]=0x90;
    assert(!mprotect(code,0x2000,PROT_READ|PROT_EXEC));
   }
-  for(unsigned i=0;i<sizeof(tests)/sizeof(tests[0]);i++)for(int selected=0;selected<2;selected++) {
+  for(unsigned i=0;i<sizeof(tests)/sizeof(tests[0]);i++)for(int selected=0;selected<3;selected++) {
    unsigned char node[0x640]={0},record[0x40]={0};struct test *t=&tests[i];put64(node+0x638,(uintptr_t)record);node[0x19]=t->state;
-   put64(record,selected?UINT64_C(0x112233445566):UINT64_C(0xabcdef123456));put32(record+8,i==7?0x2508:0x240404);
+   put64(record,(selected?UINT64_C(0x112233445566):UINT64_C(0xabcdef123456)) | (selected==2?UINT64_C(0xabcd000000000000):0));put32(record+8,i==7?0x2508:0x240404);
    put32(record+0x20,t->services);put32(record+0x24,t->flags);memcpy(record+0x28,&t->vid,2);memcpy(record+0x2a,&t->pid,2);record[0x2f]=t->source;
    int result=call_gate(node);int expected=t->expected;
    if(patched && selected && (i==0 || i==4))expected=0;

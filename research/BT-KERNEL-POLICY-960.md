@@ -101,7 +101,7 @@ There are service 4/8 branches downstream at 0x5963d0..0x59659f leading to 0x5aa
 They are code evidence of profile handling, not successful A2DP transport.
 Microphone transport remains a separate unresolved requirement.
 
-## Latest console state
+## Historical 0.16 relaunch
 
 The exact 0.16 package was relaunched without reinstalling it after verifying
 no own process/BGFT marker. Previous logs were archived and old PID 120 gate
@@ -130,3 +130,58 @@ sites. The preceding policy3 attempt instead returned status 4/value 0 without
 confirmation, so application result 64 alone must not identify the cause.
 Private evidence: bt-target-policy5-observation.json and
 service-ui-v16-policy5-result.log. No kernel change was made.
+
+## Extended predicate and dispatch checks
+
+The host checker now supports three independently fingerprinted slices:
+
+```
+python3 research/check_bt_policy_host.py PRIVATE_RX_CAPTURE
+python3 research/check_bt_policy_host.py --secondary PRIVATE_RX_CAPTURE
+python3 research/check_bt_policy_host.py --dispatch PRIVATE_RX_CAPTURE
+```
+
+The primary predicate passes 60 cases; the secondary predicate passes 78.
+Both synthetic candidates mask address comparisons to 48 bits and preserve
+scratch registers. Cases include nonzero upper address metadata, an unrelated
+address, wrong device class, source-only devices, mixed HID/audio and stock
+vendor/product admissions. The second check begins at 0x59f96e after the timer
+update and stops at local acceptance/rejection stubs; it does not exercise the
+initial connection-state guard, capacity check or subsequent profile setup.
+
+Twelve further cases execute the original dispatcher at 0x5963d0, replacing
+transport destinations with local result stubs. A synthetic remote-address bit
+skips its timer helper, and teardown is not entered. For services 0x38 it selects
+service 8 first, then service 0x10 when 8 is active or excluded. The dispatcher
+also routes service 4 and HID 0x40. No dispatch occurred for isolated bits 1 or 2
+in this path; this does not establish their names or prove absence of another
+microphone path. No codec negotiation or audio transport runs in this test.
+
+The special record flag is not an acceptable bypass: 0x5b2e44..0x5b2eb8 scans
+other connections and can call disconnect on another matching record. The
+candidate instead enters the normal capacity-counted path. Simply setting the
+existing-state bit would also skip bookkeeping and is not an implementation.
+
+## Live installation remains unresolved
+
+The pinned debugger's [kernel handler](https://github.com/Pharaoh2k/ps4debug-NG/blob/f941e2d31f83d5e1a3b64690a46787703498171a/debugger/source/kern.c)
+provides base/read/write operations, not a synchronized code-patch transaction.
+Its [kernel read/write implementation](https://github.com/Pharaoh2k/ps4debug-NG/blob/f941e2d31f83d5e1a3b64690a46787703498171a/kdebugger/source/hooks.c)
+must not be mistaken for multiprocessor quiescence. The sibling Receiver has a
+syscall-11 callback wrapper, but its availability and safe code-patch machinery
+have not been validated in this BlueHEN process. No such callback was invoked
+in this investigation.
+
+Before the first live patch: resolve and validate a 9.60 kernel execution and
+CPU-synchronization path, allocate kernel-owned executable trampoline storage,
+verify both original sites inside the synchronized section, and journal the
+installed bytes/ownership before permitting a selected connection. Removal
+must exclude active callbacks before freeing storage. Never place a persistent
+kernel jump into the GUI's user mapping or equate host predicate success with
+safe installation. The current GUI, installed package and kernel are unchanged.
+
+After admission: verify AVDTP negotiation and bounded speaker output, then
+locate/implement HFP service negotiation and SCO/eSCO transport for microphone,
+and finally test AudioIn/party routing. These remain functional requirements,
+not completed features. The HP206 cache observed here advertises only the
+0x38 service mask; Android HFP support does not prove PS4 HFP discovery.
