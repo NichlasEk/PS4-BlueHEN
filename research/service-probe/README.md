@@ -218,3 +218,45 @@ launch-success contract requires adaptation to pending results.
 Private evidence: service-app-v3-side-install.json, service-v3-run.json and
 launch-BLHN00004-service-auth-v3.json. The earlier reboot-session baseline
 measurement remains valid evidence; the latest launch is not a profile pass.
+
+## 2026-10-25: physical 9.60 daemon registration succeeds (0.04)
+
+After the user confirmed a freeze and rebooted, a fresh debugger session was
+created and verified. Launch submission was separated from result consumption;
+FTP app-log observation came first. Both launches completed without observed
+connection loss. This does not establish the cause of the earlier freezes.
+
+BLHN00004 0.03 ran as PID71: the complete 136-byte runtime auth profile matched
+the private expected profile, including caps[0] bit62=1. Its initial inventory
+contained only eboot, libkernel, libc and Sysmodule. SystemService was absent;
+the app logged END5 and process exit was verified. Ticket0 was subsequently
+consumed once (0x60000e0d).
+
+BLHN00005 0.04 adds one process-local Sysmodule acquisition (internal id
+0x80000010, OpenOrbis _types/sysmodule.h) after full auth-profile verification,
+and releases that acquisition before exit. It preserves the firmware check,
+fresh-PID permission gate, bounded heartbeat, and PID-specific stop request.
+No live credential writes, audio or Bluetooth calls are performed.
+
+Physical result PID74: profile match=1; SystemService load=0; RegisterDaemon=0;
+heartbeats 0 through 6; STOP accepted; SystemService unload=0; END0. Debugger
+confirmed the process had exited; control files were removed. Ticket1 was
+consumed afterward (0x60000f0d). No other-title transition was tested, so continued
+background execution across game launch remains unverified.
+
+Exact tested package: `build/service-app-v4/IV0000-BLHN00005_00-BLUEHENSERVICE01.pkg`
+(6,619,136 bytes), SHA-256
+`2a20789949fc30223c69af678344b01e28a4c4024cd438f96e461047b6d98cc7`.
+Compiler warnings-as-errors, package validation, signature/profile checks, four
+host tests, installation and full installed-package readback passed. Receiver
+PID68 accepted installation without a manual restart this boot (its first task).
+
+Local evidence outside Git: `review/live-229/service-v3-reboot3.log`,
+`service-v4-console.log`, `service-v4-run.json`, `service-app-v4-side-install.json`,
+`consume-v3-reboot3.json`, `consume-v4-reboot3.json`, and `reboot3-session.json`.
+Private profile/header/build inputs remain local and must not be committed.
+
+Next: a separately gated, bounded Vmic create/destroy probe within this own
+registered process, with before/after audiod slot checks and exact-handle cleanup.
+Registration success does not prove audio access, PCM delivery, headset output,
+microphone capture, Bluetooth pairing, or party/game routing.
