@@ -1,5 +1,34 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## Physical registered-info query passed: 00.10, reboot7
+
+Stable title BLHN00007, category gd, package SHA256
+678d7138a6dc355b5c1776c56945dc7a104d87c8021f073413fab37938b7f0ab
+(6619136 bytes) was installed with full readback after normal API removal of00.09.
+This replacement required no console reboot. Receiver was reopened by the user.
+
+Own process PID82 matched its intended authorization profile; no daemon
+registration was used. After the PID-bound gate, open(/dev/bt,O_RDWR) succeeded.
+GetRegisteredInfo ioctl0x80186201 with address0 and capacity32 returned7,
+errno0. Both buffer guards were intact and close returned0. Seven nonzero
+records were present, each cod0x2508/services0x40/flags0: HID device flag set,
+A2DP source/sink flags clear. No device names or addresses were logged.
+This physically validates enumeration with address0 for this registered set;
+it does not establish inquiry, pairing, generic audio or microphone support.
+
+RESULT0 was logged before LoadExec exit. Process exit, empty own BGFT list and
+released own ProcessStarter slot were independently verified. Launch ticket2
+was consumed once (0x6000110d). No scan/subscription/pair/connect/disconnect,
+audio calls or credential changes occurred. Only BLHN00007 remains installed.
+
+Private evidence: replace-v09-for-bt-v10.json, service-bt-v10-side-install.json,
+service-bt-v10-run.json, service-bt-v10-console.log, bt-v10-app-slots.json,
+launch-BLHN00007-normal-bt-v10.json. Exact accepted package remains on the host.
+Next: recover bounded inquiry/event subscription ownership and stop behavior,
+then test detection of a user-supplied headset in pairing mode. A headset live
+scan is not prepared yet; registered-info success is not headset detection.
+Output streaming and microphone transport remain separate unimplemented gates.
+
 ## Verified 2026-10-25
 
 The console exposes /dev/bt, /dev/bluetooth_hid and /dev/wlanbt. A name-filtered
@@ -92,7 +121,7 @@ These startup/event operations have NOT been replayed: subscription ownership
 and coexistence with ShellUI require further analysis. The prototype below
 only opens its own descriptor and issues the registered-info query.
 
-## Prepared 0.07 query probe
+## Historical 0.07 candidate (superseded; do not install)
 
 BLHN00008 uses the established own auth-profile/daemon registration gate, opens
 its own /dev/bt descriptor, then makes one GetRegisteredInfo query with address0,
@@ -107,7 +136,7 @@ Built, warnings-as-errors and PKG/signature validation passed; not installed or
 run yet. Four existing auth-profile tests pass; they do not validate this ioctl.
 Package6619136 bytes, SHA256
 `2460419d1b8a8778b21ae9d2ef925122cd982c1df8c9b50a43c2fd12c7f9652f`.
-User asked to reopen Receiver (current PID75/task1089) before installation.
+The old Receiver/session references below are historical and must not be reused.
 Local scripts: install_service_app_v7.py and run_service_app_v7.py SESSION_JSON.
 
 Private evidence: SceShellUI.elf/text/asm, platform.dll.sprx and its extracted

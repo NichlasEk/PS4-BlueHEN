@@ -1,5 +1,20 @@
 # Package cleanup and lifecycle on firmware9.60
 
+## Reboot7: replacement after two runs physically verified
+
+The user reopened Receiver (new verified PID79/task-1). With no own process or
+started marker and the exact preserved00.09 package hash, AppUnInstall returned0
+through the existing, reverified reboot7 ShellUI session.00.10 replaced it on the
+SAME BLHN00007 title; installed full readback matched678d7138...38b7f0ab.
+No console reboot was needed between00.09 runs, removal and00.10 installation.
+
+The00.10 registered-info Bluetooth query succeeded in PID82, then LoadExec exit
+released the process, own app slot and BGFT marker. Ticket2 consumed once.
+This validates this scoped replacement flow; Receiver still needs reopening
+when it becomes unavailable after foreground app use. It does not yet validate
+an arbitrary background service lifecycle or a seamless in-place update API.
+Current installed version is00.10, not00.09. See BT-TRANSPORT-960.md for results.
+
 ## Reboot7: normal-category exit verified twice
 
 00.09 replaced the hash-matched00.08 through fresh verified ShellUI RPC
