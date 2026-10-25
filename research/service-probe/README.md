@@ -349,3 +349,10 @@ not prove PCM consumption, audible delivery, microphone capture, game/party
 routing, background survival during title changes, or Bluetooth support.
 Local evidence: service-v6-run.json, service-v6-console.log,
 service-app-v6-side-install.json, consume-v6-reboot4.json. These remain outside Git.
+
+## 0.07: registered Bluetooth metadata query (prepared)
+
+See [BT-TRANSPORT-960.md](../BT-TRANSPORT-960.md) for recovered ABI, package
+hash, privacy boundary and remaining hardware validation. BLHN00008 uses
+main_auth_btquery.c and build_auth_btquery_pkg.py with the same private auth
+inputs as0.06. No audio calls or radio-control commands.
