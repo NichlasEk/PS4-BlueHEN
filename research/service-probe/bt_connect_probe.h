@@ -1,6 +1,29 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Own-fd diagnostic only. No PIN guessing or audio calls. Confirmation requires controller input.
  * ABI recovered from own 9.60 ShellUI wrappers and managed metadata. */
+/* Query all records using the already tested 00.10 envelope, but expose only
+ * the selected device's class/service/flag fields. Never log names or addresses. */
+static int connection_snapshot(FILE *f,int fd,uint64_t address,const char *phase)
+{
+    struct bt_guarded_records records={.before=BT_CANARY,.after=BT_CANARY};
+    struct bt_registered_query query={.address=0,.records=records.items,.capacity=32};
+    errno=0;int rc=ioctl(fd,0x80186201UL,&query);int saved_errno=errno;
+    int guards=records.before==BT_CANARY && records.after==BT_CANARY;
+    int valid=guards && rc>=0 && rc<=32;unsigned matches=0;
+    fprintf(f,"BT_CONNECT_RECORDS phase=%s result=%d errno=%d guards=%d\n",phase,rc,rc<0?saved_errno:0,guards);
+    if(valid)for(unsigned i=0;i<32;i++) {
+        const struct bt_registered_record *record=&records.items[i];
+        if(record->address!=address)continue;
+        matches++;
+        fprintf(f,"BT_CONNECT_TARGET phase=%s cod=0x%08x services=0x%08x flags=0x%08x a2dp_sink=%u a2dp_source=%u hid=%u\n",
+            phase,record->cod,record->services,record->flags,
+            (record->services&8u)!=0,(record->services&4u)!=0,(record->services&0x40u)!=0);
+    }
+    fprintf(f,"BT_CONNECT_TARGET_COUNT phase=%s valid=%d count=%u NO_NAMES_OR_ADDRESSES\n",phase,valid,matches);
+    memset(&records,0,sizeof(records));
+    return valid && matches<=1?0:-1;
+}
+
 static int connection_confirm(FILE *f,int fd,uint64_t address)
 {
     ui_pair_pending=1;ui_pair_decision=0;
@@ -42,6 +65,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
     fprintf(f,"BT_CONNECT_BEFORE state=%d errno=%d\n",rc,rc<0?errno:0);
     /* Metadata: disconnected=1, connecting=2, connected=3, streaming=5. */
     if(rc!=1){result=58;goto cleanup;}
+    if(connection_snapshot(f,fd,address,"before")!=0){result=73;goto cleanup;}
     errno=0;rc=ioctl(fd,0x8008620aUL,&address);
     fprintf(f,"BT_CONNECT_START result=%d errno=%d\n",rc,rc<0?errno:0);
     if(rc!=0){result=59;goto cleanup;}started=1;result=60;
@@ -59,7 +83,10 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
                     int answer=connection_confirm(f,fd,address);
                     if(answer<=0){result=answer<0?71:57;break;}
                 }
-                if(event.type==5 && event.status){result=64;break;}
+                if(event.type==5) {
+                    fprintf(f,"BT_CONNECT_RESULT status=%u value=0x%08x\n",event.status,event.value);
+                    if(event.status){result=64;break;}
+                }
                 if(event.type==6){result=65;break;}
             }
         }
@@ -73,6 +100,9 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
     }
  cleanup:
     if(started) {
+        errno=0;int last_state=ioctl(fd,0x80086203UL,&address);
+        fprintf(f,"BT_CONNECT_OUTCOME result=%d state=%d errno=%d\n",result,last_state,last_state<0?errno:0);
+        int snapshot_ok=connection_snapshot(f,fd,address,"outcome")==0;
         /* Only this explicitly selected, initially disconnected address.
          * A registration created by pairing is retained; never delete records. */
         errno=0;int end=ioctl(fd,0x8008620bUL,&address);
@@ -86,6 +116,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
         }
         fprintf(f,"BT_CONNECT_CLEAN disconnected=%d\n",disconnected);
         if(!disconnected)result=67;
+        else if(connection_snapshot(f,fd,address,"disconnected")!=0 || !snapshot_ok)result=74;
     }
     if(attached) {
         struct bt_kevent change={.ident=(uint64_t)fd,.filter=-1,.flags=2};

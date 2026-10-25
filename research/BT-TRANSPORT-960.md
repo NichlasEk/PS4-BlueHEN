@@ -1,5 +1,43 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## 00.15 confirmation accepted; connection result255; 00.16 diagnostics
+
+Physical 00.15 reached target confirmation event4/status3. The user accepted:
+BT_CONNECT_CONFIRM accepted1/result0. The subsequent target connect-result
+(type5) reported status255, ending the probe with result64. Disconnect returned0,
+state1 was observed, and queue deletion/both closes returned0. This proves an
+accepted confirmation reply, not completed pairing, connection or audio.
+Status255 is not named in the extracted BtDriverStatus enum; do not infer PIN
+failure, unsupported profile or authentication success from that value alone.
+Private evidence: service-ui-v15-console.log.
+
+00.16 adds guarded GetRegisteredInfo snapshots before StartConnect, on outcome
+before our disconnect, and after verified disconnect. It reuses the physically
+tested address0/capacity32 query envelope, filters records to the selected
+address in memory and logs only its class/services/flags and presence count.
+Names, addresses and other devices' details remain unlogged. Invalid counts,
+query failures and damaged guards fail the diagnostic; cleanup still runs for
+an already started connection. It also logs the pre-disconnect state and the
+connect-result event value (never the confirmation/PIN event value).
+
+These observations can distinguish an absent target record from one exposing
+A2DP services; a registered record alone does not prove usable keys or transport.
+No credentials or registrations are deleted. Confirmation and connection policy
+are unchanged. Seven host tests pass with20 connection cases, including snapshot
+query failure before/after start, malformed count, guard corruption, target
+filtering and cleanup. Package validation passes.
+
+00.16 artifact: build/service-ui-v16/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg,
+6619136 bytes, SHA256
+ff3c3692ec3c2c1f9672cdb0e10e90a4e24142b80f2d3f8a20d19e00e0a3d8c4.
+Receiver117/task-1 verified. Hash-matched00.15 uninstalled return0,00.16 installed
+on the same BLHN00007 with matching full readback. PID120 passed auth/code gates,
+UI_READY pad1 and first presentation0. ShellUI globals remained -1/-1. Ticket8
+consumed once0x60001d0d. App left open for user testing; physical diagnostic
+pending. No reboot performed. Journals: replace-v15-for-ui-v16.json,
+service-ui-v16-side-install.json, service-ui-v16-run.json/console.log,
+launch-BLHN00007-device-ui-v16.json.
+
 ## 00.15 installed and running; confirmation test pending
 
 Receiver PID111/task-1 and the same reboot7 session were verified. The
