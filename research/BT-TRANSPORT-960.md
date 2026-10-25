@@ -1,5 +1,46 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## Prepared bounded inquiry 00.11 (not physically tested)
+
+The start/stop wrappers take no input payload: ioctl0x20046204/0x20046205 with
+third argument0. ShellUI opens its own fd, writes an eight-byte0xfe subscription,
+creates a kqueue and registers EVFILT_READ(-1), EV_ADD(1). Poll uses zero timeout
+and reads16-byte events. Close removes the filter (EV_DELETE2), closes its queue
+and closes its own fd; no controller reset is present in that observed path.
+Managed metadata confirms event types1=inquiry result,2=inquiry stop, and the
+layout u8 type/status/reserved[2],u32 value,u64 address. The meaning of value in
+an inquiry event has not yet been validated; logs call it value, not a profile.
+
+Four native code ranges matched live ShellUI42 in reboot7; its manager fd and
+queue globals were both-1. Private evidence: inquiry-code-reboot7.json. This is
+not proof of multi-client event delivery or radio exclusivity. The host harness
+requires those globals to remain inactive before launch and observes them after.
+
+00.11 uses stable BLHN00007/gd and the same private profile. Own fd additionally
+uses O_NONBLOCK; kevent is zero-timeout and read tolerates EAGAIN/EINTR. It observes
+40x50ms passive polls, refuses inquiry traffic there, then submits one start.
+After accepted start it polls at most300x50ms, at most128 events, keeps at most32
+addresses only in memory, logs no names/addresses, and requests stop on every
+post-start cleanup path. It never sends stop when its start failed or was not
+attempted. The timing bounds apply to polling; they cannot guarantee kernel
+ioctl completion time or exclusivity against an independently started scan.
+It deletes its own filter and closes both own descriptors before LoadExec exit.
+No pairing/connect/disconnect, credential changes or audio operations.
+
+Host fake-driver tests exercise actual inquiry code for normal completion,
+start rejection, passive inquiry conflict, read failure, short subscription write
+and stop failure. The five-test suite passes; this is not hardware proof.
+Compiler warnings-as-errors, fake-SELF and PKG validation passed.
+Artifact build/service-scan-v11/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg,
+6619136 bytes, SHA256
+fd4035c08f5d93751b796cc559038280b7114a520963a0d7935ce0c38f178cf7.
+Not installed/run.00.10 remains installed. User asked to reopen Receiver, put a
+headset in pairing mode, keep PS4 Bluetooth settings closed, and report ready.
+Next: Receiver PID/task and same-boot sessions must be verified before replacing
+00.10; the own-process kqueue/kevent exports are fingerprinted before the PID gate.
+Afterwards check stop/close results, process/slot/BGFT cleanup and physical
+controller usability separately. Discovered events alone are not pairing/audio.
+
 ## Physical registered-info query passed: 00.10, reboot7
 
 Stable title BLHN00007, category gd, package SHA256
