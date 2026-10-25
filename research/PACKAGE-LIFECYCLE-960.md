@@ -1,6 +1,53 @@
 # Package cleanup and lifecycle on firmware9.60
 
-## Cleanup completed after user reboot
+## Stable-title exit experiment (current state)
+
+After cleanup, the preserved accepted0.06 package was hash-checked on the host.
+BLHN00007 was uninstalled through the verified ShellUI API and replaced with an
+isolated lifecycle-only00.07 build under the SAME title ID. Full installed-package
+readback matched SHA256
+300169e7f68cf474ab725b9cd1327794f78b0c0569112f0e1f38e16b2e218717
+(6619136 bytes). This is build/service-exit-v7, NOT the older Bluetooth query
+candidate in build/service-app-v7. The latter uses BLHN00008 and must not be
+installed. Use a later version for subsequent stable-title Bluetooth builds.
+
+Physical PID71 matched the expected private authorization profile, registered
+as a daemon successfully, emitted heartbeats, accepted its PID-bound stop file,
+and logged EXIT_SYSTEM_BEGIN before calling sceSystemServiceLoadExec("exit",NULL).
+The process disappeared without logging a return or fallback. GetAppId then
+returned0xffffffff, but the BGFT started-title list still contained BLHN00007.
+A later independent read-only check confirmed the same marker and responsive
+ShellCore41/ShellUI42. Thus LoadExec alone DOES NOT solve repeated replacement.
+No further launch, uninstall retry, reboot or internal-list edit was performed.
+
+Private evidence: replace-v06-for-exit-v7.json, service-exit-v7-side-install.json,
+launch-BLHN00007-system-exit-v7.json, service-exit-v7-run.json,
+service-exit-v7-console.log, exit-v7-appid.json, exit-v7-readonly-recheck.json.
+The launch ticket0 has already been consumed; do not consume it again.
+The fresh reboot5 ShellCore RPC is recorded in reboot5-shellcore-session.json;
+previous boot sessions remain invalid. Receiver has handled this installation;
+its ability to accept another registration must be re-established before use.
+
+### Stop notification investigation (static evidence, not a tested fix)
+
+ShellCore's internal GameStopped at virtual0x9e5cb0 accepts a title pointer and
+an integer type. It calls the started-list removal helper0xa60f20 and then
+0xa2c380. The normal exit caller at0x3e0122 obtains the type from app-object
+field0xa858. This is not a public export recovered from libSceBgft.
+
+Two assignment paths were traced: the path storing at0x3dd1fc selects3 normally
+or4 for /hostapp/app and /data/app path prefixes. The other path stores at
+0x3dac97, with an upstream /preinst2/app comparison selecting6, otherwise a
+separate discriminator selecting2 or7. These are distinct paths; the type for
+our particular gdd launch has NOT yet been established. In particular, choosing6
+merely because the downstream method fast-returns would be unjustified.
+
+Next: establish which launch/teardown path owns this gdd app, its exact type and
+thread requirements, and whether a normal supported stop notification can be
+used. Do not call internal GameStopped with guessed parameters or mutate the
+started-title vector. A successful process exit is not package-manager teardown.
+
+## Cleanup completed after user reboot (before exit experiment)
 
 In reboot5, a fresh debugger session and ShellUI PID42 were verified. The last
 old title BLHN00006 matched its expected package hash, had no running process,
@@ -13,7 +60,7 @@ Its full package SHA256 still matches the accepted0.06 artifact:
 5bc38620b0b9907dd13ec30cd3ddb1b0d407c456cdc88920f1e75fb7bb3b83e9.
 All six old test titles are removed. The reboot-assisted recovery is now
 physically verified; automatic lifecycle teardown without reboot still needs a
-fix and physical testing. No0.07 package has been installed.
+fix and physical testing. At that point no0.07 package had been installed; see the later experiment above.
 
 Private journals: cleanup-last-reboot5.json and
 cleanup-reboot5-final/verification.json. Older RPC sessions/tickets are invalid;
@@ -70,8 +117,9 @@ system_bit1. Do not claim category alone or caller context alone was the cause.
 Do not install prepared BLHN00008 or create more side-by-side test titles.
 Retain BLHN00007 as the stable development title. Preserve the exact hardware-
 accepted package on the host, then use an explicitly journaled replacement flow
-for subsequent builds. Rebuild0.07 for that title and adapt installation/launch
-scripts before resuming Bluetooth work. Do not mark replacement support as tested.
+for subsequent builds. Use a later version for that title and adapt installation/launch scripts before
+resuming Bluetooth work. The one replacement before launch succeeded; repeated
+replacement after daemon exit remains unverified.
 
 Fix and physically verify lifecycle exit before relying on repeated updates.
 Candidate APIs found in the local SystemService exports include LoadExec,
