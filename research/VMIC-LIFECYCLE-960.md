@@ -1,0 +1,77 @@
+# One-shot Vmic creation and cleanup, 2026-10-25
+
+The console test observed a virtual microphone being allocated and then
+freed, but **the API lifecycle did not pass**: both Create and Destroy returned
+`0x809b00ff`. No microphone PCM, Bluetooth transport or chat routing was tested.
+
+## Method
+
+The unchanged installed BLHN00001 version 0.02 package was verified by full
+FTP readback (SHA-256
+`6d93b310fa88900838c5c8370e4e538a94c1f9abaad1583cb53dde93f890a8ce`).
+A new process, PID119, was verified by title and identity. During its bounded
+gate wait, a debugger RPC thread/scratch allocation was installed in this
+test process. Firmware, getpid, fresh module inventory and Dlsym results
+were checked. Complete Create/Destroy symbol bodies (309/222 bytes) matched
+the local 9.60 AudioIn module before invocation.
+
+The tested register arguments to Create were `(0, 128, 16000, 1)`. The
+examined wrapper ignores its incoming first argument; this is a firmware-
+specific experiment, not a general declaration of the public ABI.
+Create was invoked exactly once. `vmic_lifecycle.py` managed observations
+and cleanup; it is orchestration code, not part of the installed app binary.
+
+## Observed result
+
+| Stage | API return | Observed daemon slot 0 |
+| --- | --- | --- |
+| Before | — | inactive, owner PID 0 |
+| Create | 0x809b00ff | active, owner PID119, handle 0x00040100, 128 frames, 16000 Hz, 1 channel |
+| Destroy(0x00040100) | 0x809b00ff | inactive, owner PID 0 |
+| After process exit | — | inactive, owner PID 0 |
+
+The error concealed the handle from the Create return value. Cleanup used
+the exact handle read from a newly allocated slot owned by PID119, with
+ownership rechecked immediately before Destroy. No guessed or foreign handle
+was used. One Destroy call was made; no automatic retry occurred.
+All four slots were inactive after cleanup and after process exit. The stale
+handle/format fields remained, as expected for this slot layout. This verifies
+active/owner cleanup, not every possible service-side resource.
+
+The original app subsequently reached its existing-module refusal (result8)
+and exited. That app log is separate from the lifecycle RPC journal. Its
+gate was removed. Launch ticket4 has had its final result retrieved
+(0x6000230d); do not consume it again.
+
+## Interpretation and next work
+
+The allocation/free observations match the previously identified failure
+path after the daemon operation. The AudioIn wrappers then notify Mbus through
+NID i1D0nTVcCgk. That export invokes an IPC stub at Mbus offset0x25a0, command
+0xce110040. The same failure on Create and Destroy is consistent with this
+notification failing. This is an inference from code and observations;
+the precise service-side cause and permission requirements remain unresolved.
+
+Do not treat negative Create as proof that nothing was allocated. Do not
+hide the Mbus error, advertise a working microphone, or patch service
+permissions to force success. Next, trace that notification's requirements
+and distinguish normal registration from the debugger-thread context.
+VmicWrite and PCM delivery remain untested.
+
+## Evidence and verification
+
+Private evidence is outside Git under `../review/live-229/`:
+`vmic-create-run.json`, `vmic-create-console.log`, and
+`launch-BLHN00001-vmic-create.json`. The raw journal includes a reporting
+correction: the first helper incorrectly marked an error return as a matching
+handle. The raw API returns/slot observations were retained; the corrected
+field is false. Lookup-phase `called=false` fields predate the later lifecycle
+calls; the lifecycle event list is authoritative for those calls.
+
+Five host tests exercise ownership refusal, successful cleanup, cleanup when
+Create conceals an allocated handle behind an error, foreign ownership, and
+no automatic retry or speculative cleanup after transport timeout:
+
+```
+python3 -B -m unittest discover -s research -p test_vmic_lifecycle.py -v
+```
