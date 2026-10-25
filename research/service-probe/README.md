@@ -329,3 +329,23 @@ install_service_app_v6.py, run_service_app_v6.py SESSION_JSON,
 launch_service_v6_separated.py (allowlist only BLHN00007).
 Receiver PID69 has an owned task from 0.05. User was asked to close/open only
 Receiver. Do not cycle the older ordinary test app again or reboot automatically.
+
+## 2026-10-25: 0.06 physical silent-write test passes
+
+Receiver was manually closed/opened without console reboot: new PID75 and
+ownedTask=-1 verified. BLHN00007 00.06 installed and fully read back with SHA256
+`5bc38620b0b9907dd13ec30cd3ddb1b0d407c456cdc88920f1e75fb7bb3b83e9`.
+The preserved tested package is 6619136 bytes.
+
+Own process PID78: auth profile matched, RegisterDaemon0, AudioIn load0,
+VmicCreate=0x40200. Supervisor verified the live Create/Destroy/Write code and
+own-PID slot metadata. One Write(handle,128,silence) returned0, Destroy returned0,
+AudioIn/SystemService unload0, END0. Audiod showed the own slot cleared before
+and after verified process exit; all controls removed. Launch ticket1 consumed
+once afterward with result0x6000100d. No errors or connection loss observed.
+
+This proves acceptance of one synthetic silent PCM block by the API. It does
+not prove PCM consumption, audible delivery, microphone capture, game/party
+routing, background survival during title changes, or Bluetooth support.
+Local evidence: service-v6-run.json, service-v6-console.log,
+service-app-v6-side-install.json, consume-v6-reboot4.json. These remain outside Git.

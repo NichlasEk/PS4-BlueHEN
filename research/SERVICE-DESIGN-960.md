@@ -1,5 +1,16 @@
 # BlueHEN service direction, 2026-10-25
 
+## Current measured status (2026-10-25)
+
+Later hardware experiments supersede the earlier unverified bootstrap/lifecycle
+statements below: our standalone gdd process matches its intended runtime auth
+profile, registers as a daemon, creates its own Vmic, writes one silent PCM
+block, destroys the exact handle and exits cleanly. See
+[VMIC-LIFECYCLE-960.md](VMIC-LIFECYCLE-960.md) for measured limits.
+Background survival across title changes, chat routing, real capture and generic
+Bluetooth profiles remain unverified. Ordinary-app cycling caused confirmed hard
+freezes; use separately observed service launch and manually renewed Receiver.
+
 ## Scope
 
 The user explicitly clarified that GoldHEN integration is optional. The target
