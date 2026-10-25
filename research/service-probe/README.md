@@ -53,7 +53,7 @@ Keep this artifact unchanged during testing. Runtime modules remain local.
 ## Physical result, 2026-10-25
 
 Fresh Receiver PID134 installed the exact package above; installed app.pkg
-readback matched. Launch ticket8 completed with app ID0x60002a0d. The process
+readback matched. Launch ticket8 completed with app ID0x6000290d. The process
 was BLHN00002 PID137, parent PID38 (SceSysCore). Runtime get_authinfo returned0
 with caps[0] bit62 clear. Resolved RegisterDaemon/get_authinfo pointers and
 code prefixes matched the local firmware before the PID gate was supplied.
