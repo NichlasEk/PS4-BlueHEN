@@ -20,10 +20,47 @@ with matching SHA-256:
 
 `6d93b310fa88900838c5c8370e4e538a94c1f9abaad1583cb53dde93f890a8ce`
 
-At preparation time installation/runtime verification is pending a fresh
-Receiver session; FTP delivery is not installation or successful module loading.
+Version 0.02 was subsequently installed and its installed-package readback
+matched the same hash. See the physical result below.
 The host tests now cover existing-module refusal, inventory errors, load
 failure, export-lookup failure with cleanup, and unload failure.
+
+### Version 0.02 physical result, 2026-10-25
+
+Receiver restarted as PID 110. The previous test title was absent at the
+installation preflight, so a fresh installation was performed; no uninstall
+or modification of another title was needed.
+
+The isolated test ran as PID 113 with title BLHN00001. Its module inventory
+already contained Ipmi, Mbus, AudioOut and AudioIn. The existing-module guard
+therefore returned result 8 before attempting a sysmodule load or unload.
+This is NOT a successful test of the load/unload branch: these libraries were
+preloaded in this application environment.
+
+A second, deliberately instrumented run (PID 116, same package) resolved
+sceAudioInVmicCreate, sceAudioInVmicWrite and sceAudioInVmicDestroy through
+sceKernelDlsym in that isolated process. All three lookups returned zero,
+and the resolved addresses and 32-byte prefixes matched the local 9.60
+AudioIn module. The live module handle was discovered afresh (46).
+No Vmic function was called. This verifies export access in our own app,
+not virtual-mic creation, audio routing or headset support.
+
+This diagnostic installed a debugger RPC thread and scratch allocation in
+the short-lived test process. It invoked getpid, module inventory and dlsym,
+not AudioIn entrypoints. The test's original guard still ended with result 8
+after the separate export verification. Both test processes exited and both
+gate files were removed. All four Vmic slots were inactive before and after.
+
+Raw local evidence: module-app-v2-fresh-install.json, module-app-v2-run.json,
+module-app-v2-lookup-run.json and module-app-v2-lookup-console.log under
+../review/live-229 (outside this repository). Launch tickets 2 and 3 have
+both had their final results retrieved; do not query them again.
+
+Next: use a borrowed preloaded AudioIn module without unloading it. Only use
+the system-module acquisition/release branch when it is initially absent.
+Then implement a bounded, separately validated Vmic creation/cleanup test.
+The installed 0.02 artifact retains the conservative refusal; do not describe
+it as already implementing that next behavior.
 
 The native binloader experiment was refused before module loading: its PID
 belonged to PartyDaemon. Do not use the binloader to run this experiment in
