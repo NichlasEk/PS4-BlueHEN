@@ -27,8 +27,12 @@ The supervisor must archive logs and remove both control files after the run.
 The package was built and validated, then FTP-transferred and read back with
 SHA-256 `218f922b5f10e94ffedfbe2847d6d45a7d64d202010f5ab18028d269af622acf`.
 Artifact: `build/module-app-v3/IV0000-BLHN00001_00-BLUEHENMODULE001.pkg`.
-Installation/runtime verification is still pending: Receiver did not respond
-and the user was asked to reopen it. Do not describe this as a physical pass.
+Installed and physically exercised on 2026-10-25; installed-package readback
+matched this hash. Both main-thread calls returned 0x809b00ff. Slot0 was
+allocated to PID128 (handle0x40200), then freed by one Destroy with that exact
+verified handle. END result=4 and process exit were observed; all four slots
+were inactive afterward. This is not an API pass. No debugger RPC was
+installed in the test process. See ../VMIC-LIFECYCLE-960.md.
 Prior version artifacts remain separate and unchanged.
 
 ## Version 0.02
