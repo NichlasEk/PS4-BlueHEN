@@ -1,5 +1,47 @@
 # Package cleanup and lifecycle on firmware9.60
 
+## Reboot6: 00.08 refused before registration; normal-category baseline ready
+
+The user confirmed that the prior relaunch froze the console, then rebooted it.
+Reboot6: pinned debugger loaded once, firmware9.60 verified, own started list
+empty. Fresh ShellUI RPC removed the hash-matched00.07 with return0. Receiver
+installed00.08 under BLHN00007; full readback matched6742d516...05a308e.
+
+Physical PID71 matched its authorization profile and loaded SystemService, but
+sceKernelDlsym("sceLncUtilUnregisterDaemon") returned0x80020003. The named NID
+exists in the extracted module, but this does NOT imply application-side dlsym
+accessibility. The test refused before its permission gate and RegisterDaemon,
+unloaded SystemService successfully, logged END result8 and exited. Neither
+unregister nor LoadExec ran. Do not claim that the unregister approach was tested.
+
+Despite NO daemon registration, the own started marker and active application
+slot1 remained (type2/state1). Thus RegisterDaemon is not required to trigger
+this stale state. The generic descriptor vector no longer contained the title.
+Launch ticket0 was consumed once:0x60000e0d. No relaunch/uninstall retry followed.
+Private journals: reboot6-debugger-load.json, replace-v07-for-exit-v8-reboot6.json,
+service-exit-v8-side-install.json, reboot6-shellcore-session.json,
+service-exit-v8-run.json, service-exit-v8-console.log, exit-v8-app-slots.json,
+exit-v8-descriptors.json, launch-BLHN00007-system-exit-v8.json.
+
+Static ProcessTerm path0x3de460 is called from unmountApp0Dir0x314700. Relevant
+cleanup branches at0x3dfc4c and0x3e0b4e require descriptor types4/5. This suggests
+the installed gdd launch category is incompatible with the normal package
+cleanup path; it remains an inference, not a captured branch trace.
+
+Prepared00.09 isolates normal-app category gd with the same stable title and
+private authorization profile. It performs NO daemon registration, audio or BT;
+it checks its profile, waits for a PID-bound gate/stop, then LoadExec("exit",NULL).
+Build, fake-SELF verification, package validation and existing4 tests pass.
+Artifact build/service-exit-v9/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg,
+6619136 bytes, SHA256
+592df88c3965c1f5bce3e0aaee08eb399cd85ce1e86b8f25d4eea39e33c7526e.
+NOT installed or physically tested. User asked for a normal reboot, GoldHEN and
+Receiver before replacement, because relaunching the stale state caused a freeze.
+Local v9 harness explicitly refuses launch if any own started marker remains.
+No additional title IDs have been installed. After a fresh boot, re-establish
+all sessions and verify installed00.08 before replacement; do not reuse reboot6
+RPCs or tickets. Observe process exit, slot release and BGFT release separately.
+
 ## Follow-up: live slot evidence and unregister candidate
 
 A bounded read of the six ShellCore application records confirmed that slot1
