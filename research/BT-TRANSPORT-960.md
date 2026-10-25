@@ -1,5 +1,34 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## 00.14 reached confirmation; 00.15 adds explicit on-screen acceptance
+
+Physical 00.14: scan result0/count2, selected slot1, GetConnectingInfo returned1,
+StartConnect returned0, state2 observed repeatedly, then target event type4
+status3. The diagnostic disconnected (return0), observed state1, deleted its
+queue and closed both descriptors (all0). Final result63. This is a user
+confirmation request, distinct from PIN entry (event3); the old combined UI
+wording led the user to report a PIN request. Connection completion, pairing
+registration, streaming and microphone transport remain unproved.
+
+00.15 asks for X acceptance on that target confirmation event, or Circle to
+cancel. No acceptance is automatic. A bounded wait and cancellation send a
+rejection. Only one confirmation is answered per attempt. ReplyUserConfirmation
+uses ioctl0x80106208 with a16-byte envelope: address u64 at0, accept u32 at8,
+zero padding at12. Own native wrapper0x3a2c10 and managed methods2681/2682 agree;
+fields2290/2291 establish reject0/accept1. PIN entry remains unsupported and now
+has distinct wording. The connection test still disconnects after completion;
+this build does not add persistent audio or microphone operation.
+
+Seven host tests pass (connection cases expanded to cover confirmation accept,
+reject, reply failure and repeated requests); PKG validation passes. Version00.15
+on stable BLHN00007,6619136 bytes, SHA256
+6f21821e89140008b45fcca5581f5f48c1422d6db5152ee2292084414461b82b.
+Artifact: build/service-ui-v15/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg.
+Not installed. 00.14 was still active when observed; user asked to exit via
+Circle/Options and reopen Receiver. No console reboot performed. Private
+service-ui-v14-console.log records the completed diagnostic; ui-v14-app-slots.json
+records the expected active own slot while the GUI remains open.
+
 ## GUI accepted and selected-device connection diagnostic 00.14
 
 The user confirmed 00.13 works on the TV. Its physical log records 17 inquiry

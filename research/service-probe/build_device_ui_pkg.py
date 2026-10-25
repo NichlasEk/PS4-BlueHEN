@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[2]
 sdk = Path(os.environ.get('OO_PS4_TOOLCHAIN', '/opt/openorbis/OpenOrbis/PS4Toolchain'))
-out = root / 'build/service-ui-v14'
+out = root / 'build/service-ui-v15'
 stage = out / 'stage'
 stage.mkdir(parents=True, exist_ok=True)
 # Profile inputs stay private; no source-tree credential templates.
@@ -39,8 +39,8 @@ def run(*args, **kwargs):
 
 run('clang', '--target=x86_64-pc-freebsd12-elf', '-fPIC', '-O2', '-Wall', '-Wextra',
     '-Werror', '-isysroot', sdk, '-isystem', sdk / 'include',
-    '-DBLUEHEN_LOG="/data/bluehen/service-ui-v14.log"',
-    '-DBLUEHEN_GATE="/data/bluehen/service-ui-v14.allow"',
+    '-DBLUEHEN_LOG="/data/bluehen/service-ui-v15.log"',
+    '-DBLUEHEN_GATE="/data/bluehen/service-ui-v15.allow"',
     '-include', header, '-c', root / 'research/service-probe/main_device_ui.c', '-o', out / 'main.o')
 run('ld.lld', '-m', 'elf_x86_64', '-pie', '--script=' + str(sdk / 'link.x'),
     '--eh-frame-hdr', '-z', 'max-page-size=0x4000', '-L' + str(sdk / 'lib'),
@@ -68,7 +68,7 @@ sfo.unlink(missing_ok=True)
 run(tool, 'sfo_new', sfo)
 for key, value in dict(APP_TYPE=1, ATTRIBUTE=0, DOWNLOAD_DATA_SIZE=0, SYSTEM_VER=0).items():
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Integer', '--maxsize', 4, '--value', value)
-for key, size, value in [('APP_VER', 8, '00.14'), ('VERSION', 8, '01.00'),
+for key, size, value in [('APP_VER', 8, '00.15'), ('VERSION', 8, '01.00'),
                          ('CATEGORY', 4, 'gd'), ('CONTENT_ID', 48, content),
                          ('TITLE_ID', 12, 'BLHN00007'), ('TITLE', 128, 'BlueHEN Bluetooth')]:
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Utf8', '--maxsize', size, '--value', value)

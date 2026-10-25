@@ -1,10 +1,27 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Own-fd diagnostic only. No PIN guessing, confirmation reply or audio calls.
+/* Own-fd diagnostic only. No PIN guessing or audio calls. Confirmation requires controller input.
  * ABI recovered from own 9.60 ShellUI wrappers and managed metadata. */
+static int connection_confirm(FILE *f,int fd,uint64_t address)
+{
+    ui_pair_pending=1;ui_pair_decision=0;
+    snprintf(ui_status,sizeof(ui_status),"Headsetet begar parkoppling. X = godkann, CIRKEL = avbryt.");
+    for(unsigned tick=0;tick<400 && ui_running && !ui_cancel && !ui_pair_decision;tick++) {
+        ui_frame();usleep(50000);
+    }
+    int accept=ui_pair_decision==1 && ui_running && !ui_cancel;
+    ui_pair_pending=0;ui_pair_decision=0;
+    struct {uint64_t address;uint32_t accept,reserved;} request={address,(uint32_t)accept,0};
+    _Static_assert(sizeof(request)==16,"confirmation envelope");
+    errno=0;int rc=ioctl(fd,0x80106208UL,&request);
+    fprintf(f,"BT_CONNECT_CONFIRM accepted=%d result=%d errno=%d\n",accept,rc,rc<0?errno:0);
+    snprintf(ui_status,sizeof(ui_status),accept?"Parkoppling godkand. Vantar pa headsetet...":"Parkoppling avbruten.");
+    return rc==0?accept:-1;
+}
+
 static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
 {
     int fd=-1,queue=-1,attached=0,started=0,result=50,rc;
-    unsigned events=0;
+    unsigned events=0;int confirmation_replied=0;
     ui_cancel=0;
     if(!address || (device_class&0x1f00u)!=0x400u)return 51;
     fd=open("/dev/bt",O_RDWR|O_NONBLOCK);
@@ -35,7 +52,13 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
             if(++events>256){result=62;break;}
             if(event.address==address) {
                 fprintf(f,"BT_CONNECT_EVENT type=%u status=%u TARGET_ONLY\n",event.type,event.status);
-                if(event.type==3 || event.type==4){result=63;break;}
+                if(event.type==3){result=63;break;}
+                if(event.type==4) {
+                    if(confirmation_replied){result=72;break;}
+                    confirmation_replied=1;
+                    int answer=connection_confirm(f,fd,address);
+                    if(answer<=0){result=answer<0?71:57;break;}
+                }
                 if(event.type==5 && event.status){result=64;break;}
                 if(event.type==6){result=65;break;}
             }
