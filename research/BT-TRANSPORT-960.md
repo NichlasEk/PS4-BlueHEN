@@ -1,5 +1,61 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## Physical inquiry passed: 00.11, reboot7
+
+User supplied a UGreen headset in pairing mode. Receiver PID86/task-1 was
+verified;00.11 replaced the hash-matched00.10 on stable BLHN00007, with full
+readback matching fd4035c0...f178cf7. Own PID89 passed the auth and code gates.
+Open, eight-byte subscription and kqueue registration succeeded. Inquiry start
+returned0. Thirteen result events represented two distinct addresses, with
+observed value fields0x0008043c and0x00240404. No names/addresses were logged.
+This is successful discovery, NOT confirmed identification of the UGreen device.
+The per-result status bytes (e.g.199..209) are recorded without interpreting them
+as errors; their semantics have not yet been established.
+
+Stop returned0, filter delete0, queue close0, fd close0. RESULT0 and LoadExec exit
+were observed; own ProcessStarter slot and BGFT marker were released. ShellUI
+manager globals remained-1/-1. Ticket3 consumed once (0x6000130d). The user
+confirmed controller/menu operation afterwards and reported no headset connection,
+which is expected: no pairing/connect call was sent.
+Private evidence: service-scan-v11-run.json/console.log/side-install.json,
+scan-v11-app-slots.json, replace-v10-for-scan-v11.json,
+launch-BLHN00007-normal-scan-v11.json. Preserve this exact tested package.
+
+## Graphical device selector 00.12 prepared, not installed
+
+The user requested a graphical interface for equipment selection. The new
+main_device_ui.c uses native SDL software rendering plus Pad input on PS4, the
+same stable gd title/auth profile and the proven own-fd inquiry flow. Triangle
+starts discovery; up/down changes focus; X selects an in-memory device; Circle
+cancels discovery or exits; Options exits. The list is populated by actual inquiry
+events. New scans clear the previous list and selection. No device is auto-connected.
+The UI explicitly says connection, audio and microphone are not ready.
+
+After a successful stop, it attempts a bounded name lookup for each discovered
+address using ioctl0xc0106206, envelope{u64 address,pointer name}. The native
+wrapper at0x3a2b60 and managed method2677 establish the envelope; metadata field2217
+sets maximum name length120. A guarded128-byte buffer checks the trailing guard
+and bytes121..127, requires termination within121 bytes, and sanitizes display
+text. Names appear on screen only; logs contain result/guard/slot, not names or
+addresses. Name lookup is untested on hardware and no hard ioctl timeout is claimed.
+
+Local preview renders the actual UI drawing code with explicitly labelled example
+data; this is layout evidence, not PS4 graphics proof. Six host tests pass,
+including GUI inquiry cleanup and cancellation before/after start. Warnings-as-
+errors compilation, fake-SELF validation and package validation passed.
+Artifact build/service-ui-v12/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg,
+6619136 bytes, SHA256
+22b8f8cc3b5a7d6e1fb2dee5fc7fd675e7e35de237af034d93874207dc2cea0f.
+NOT installed or physically tested.00.11 remains installed. User asked to reopen
+Receiver and report ready. UI exits after five minutes without button input and
+supports a PID-bound service-ui-v12.stop file for controlled test shutdown.
+
+Next: verify Receiver and same-boot sessions, replace00.11, launch and fingerprint
+exports before granting the gate. run_device_ui_v12.py stops observing at UI_READY
+with pad_ok1 and intentionally leaves the UI running for the user. Obtain physical
+TV/input/name-selection evidence; then observe exit and clean slot/BGFT state and
+consume the new launch ticket once. No pairing/audio acceptance is implied.
+
 ## Prepared bounded inquiry 00.11 (not physically tested)
 
 The start/stop wrappers take no input payload: ioctl0x20046204/0x20046205 with

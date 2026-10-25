@@ -8,11 +8,30 @@ import unittest
 
 class InquiryCleanup(unittest.TestCase):
     def test_driver_failure_boundaries(self):
+        self.check_source('main_normal_inquiry.c')
+
+    def test_ui_driver_failure_boundaries(self):
+        self.check_source('main_device_ui.c')
+
+    def check_source(self, filename):
         cc = shutil.which('cc')
         if not cc:
             self.skipTest('host C compiler unavailable')
-        source = pathlib.Path(__file__).with_name('main_normal_inquiry.c').read_text()
+        source = pathlib.Path(__file__).with_name(filename).read_text()
         core = source[source.index('struct bt_event {'):source.index('static void inventory(')]
+        gui = filename == 'main_device_ui.c'
+        if gui:
+            core = source[source.index('struct bt_event {'):source.index('static int permit(')]
+            core += r"""
+struct ui_device {uint64_t address;char name[121];};
+static struct ui_device ui_devices[32];
+static unsigned ui_count;
+static int ui_focus,ui_selected,ui_cancel,ui_running=1;
+static char ui_status[128];
+static void ui_frame(void) {if(mode==6 || (mode==7 && active))ui_cancel=1;}
+static int ui_names(FILE *f,int fd) {(void)f;assert(fd==7);return 0;}
+"""
+            core += source[source.index('static int inquiry('):source.index('static int gui_run(')]
         prelude = r'''
 #include <stdint.h>
 #include <stddef.h>
@@ -72,6 +91,12 @@ int main(void) {
  fclose(log);return 0;
 }
 '''
+        if gui:
+            driver = driver.replace('const int expected[]={0,26,25,27,21,30};',
+                                    'const int expected[]={0,26,25,27,21,30,0,0};')
+            driver = driver.replace('mode<6', 'mode<8')
+            driver = driver.replace('mode==2 || mode==4?0:1', 'mode==2 || mode==4 || mode==6?0:1')
+            driver = driver.replace('mode==0 || mode==3 || mode==5?1:0', 'mode==0 || mode==3 || mode==5 || mode==7?1:0')
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory)
             (path/'check.c').write_text(prelude+core+driver)
