@@ -1,5 +1,64 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## Hardware context and stock-call comparison
+
+User identifies the console as an original PS4 (exact CUH model unknown), and
+points to EutherBlue for headset identity. Read-only inspection of
+/home/nichlas/EutherBlue/profiles/hp206-jl708n/profile.json identifies UGREEN
+Studio Pro / HP206, JieLi JL708N, firmware platform JL7083F-B412. The dated
+2026-09-03 report reports A2DP and HFP reconnected after the physically verified
+voice-prompt build; this is prior Android evidence, not a fresh firmware read
+or PS4 audio/microphone proof. No EutherBlue files or headset firmware changed.
+Its pre-existing untracked i.md and reports/images/ were preserved.
+
+Private bt-pairing-managed-trace.json records offline method decoding with input
+hash. Stock BtPairingJob.Run(method32498) calls sceBtStartConnect and handles
+confirmation through ReplyUserConfirmation(method32504), which directly passes
+the selected address and decision to sceBtReplyUserConfirmation. These match
+our entry points; there is no additional Bluetooth API call in that method's
+start path. UI callbacks and the underlying Bluetooth backend are separate
+and not fully traced. UserConfirmationRequest(method32503) formats
+(event.val modulo1000000) as six digits; this value must not enter diagnostics.
+The known callback does not establish why the driver rejects this headset.
+
+## 00.16 physical failure decoded:0x802f3403 maps to compatibility error
+
+First attempt was cancelled (result57/state2,no events). Second attempt accepted
+the user's confirmation (reply0), then target event5/status255 carried
+value0x802f3403. Before our disconnect the state was4 (disconnecting).
+All three register snapshots returned7 with intact guards and zero target
+matches: before, outcome and disconnected. Disconnect/queue/delete/closes
+succeeded and final state1 was verified. Thus no target registration was
+observed; absence does not by itself prove which authentication stage failed.
+Private evidence: service-ui-v16-console.log. Exact tested package is unchanged.
+
+Own-console static evidence gives a more specific interpretation:
+
+- ShellUI.text0x81a370 and ShellCore.text0x106d9e0 map raw0x802f3403 to CE-31121-8.
+- app.exe.managed method32500, BtPairingJob.ConnectResult, RVA0x25b34c, tests
+  signed event.val before the status byte. It groups0x802f3403 with0x802f220a.
+- That branch returns0x80ec0207 generally, but0x80ec020e when
+  (device.cod &0x1f00)==0x400 (audio/video). Our selected discovery class0x240404
+  matches that condition. This is an offline inference about stock UI handling.
+- ShellUI.text0x83c40c and ShellCore.text0x108fa7c map0x80ec020e to CE-41521-3.
+- Sony describes [CE-41521-3](https://www.playstation.com/en-us/support/error-codes/ps4/ce-41521-3/)
+  as a Bluetooth device incompatible with the console model.
+
+This is a Bluetooth-layer rejection received directly by our own fd, not a
+ShellUI dialog preventing our StartConnect call. Patching only that dialog or
+error translation cannot establish a connection. The exact backend reason and
+whether it is a software restriction, profile limitation or hardware/device
+compatibility issue remain unresolved. Do not equate acceptance of the reply
+with completed authentication. No kernel patch or firmware update was attempted.
+
+Next work: identify the generating backend path for0x802f3403; compare the stock
+pairing/confirmation call sequence with ours, and establish exact headset/PS4
+models. User supplied original PS4 and EutherBlue identifies Studio Pro/HP206 (see above). There is no
+kernel image/backend implementation in the inspected local artifacts, and the
+current DebugClient exposes no kernel-read interface. Do not guess live kernel
+addresses. ShellUI's result path also shows that future diagnostics should check
+signed event.val before interpreting status0 as success.
+
 ## 00.15 confirmation accepted; connection result255; 00.16 diagnostics
 
 Physical 00.15 reached target confirmation event4/status3. The user accepted:
