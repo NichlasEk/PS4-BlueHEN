@@ -21,7 +21,10 @@ and the PID-scoped stop file remains available for diagnostics.
 
 Version 0.17 retains title BLHN00007/category gd, replacing the existing icon.
 Log/stop paths use service-ui-v17. Seven host tests and PKG validation passed;
-installation and physical manual-start verification remain pending.
+installation completed and full installed-package readback matches the hash below.
+The user launched it from the PS4 menu and confirmed the GUI works. The fresh
+process/log verified profile match, local startup checks, controller readiness
+and successful frame presentation. No host launch or allow file was sent.
 Package SHA-256: c52c634d8d9372f70fe7761e738648094a9c24ef6836dbea4daa0a0a65b2df59.
 
 ## Hardware context and stock-call comparison
