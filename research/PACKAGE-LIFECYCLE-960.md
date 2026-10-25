@@ -1,5 +1,51 @@
 # Package cleanup and lifecycle on firmware9.60
 
+## Follow-up: live slot evidence and unregister candidate
+
+A bounded read of the six ShellCore application records confirmed that slot1
+still contained BLHN00007 with active=1, head_type=2, BGFT type=2 (field0xa858),
+and state=1 after its process exited. The stop-suppression counter was0. This
+establishes the type from the live own-title record, but also shows that clearing
+only the BGFT list would leave other application state behind.
+Private journal: exit-v7-app-slots.json, reader read_app_slots.py.
+
+GetAppTitleId queried with the saved launch result0x60000e0d returned0x80940004
+and an empty title. No KillApp call was made with that unresolvable app ID.
+The earlier GetAppId result0xffffffff therefore must not be interpreted as proof
+that all ShellCore application bookkeeping is gone.
+
+One attempt to relaunch the SAME installed0.07 was submitted successfully with
+ticket1. Its previous console log was verified against the preserved local log
+and renamed to service-exit-v7-first-run.log. No new log was found. Subsequently
+connections to debugger744, FTP2121 and Receiver12801 were refused/unavailable.
+The result-consumption script failed at initial socket connection, BEFORE any
+RPC: ticket1 has NOT been consumed. This does not establish whether the console
+froze, rebooted or lost services; the user was asked for its visible state.
+Do not resubmit the launch or reload the debugger into this uncertain boot.
+Private journal: launch-BLHN00007-system-exit-v7-unregister.json.
+
+Static analysis found the exported sceLncUtilUnregisterDaemon at0x5c10 in the
+local9.60 SystemService module. It takes NO arguments and sends IPC0x30032 with
+no request data; server identity determines the calling app. Its manager path
+unregisters daemon events. This is not evidence that it cleans package slots.
+Never invoke it in ShellCore/ShellUI to unregister a different application.
+
+Prepared lifecycle-only00.08 adds own-process unregister after a successful
+registration, including timeout cleanup, before the existing LoadExec exit.
+It refuses to register if the unregister export is unresolved. Package/signature
+validation and compilation with warnings-as-errors passed. Stable titleBLHN00007,
+6619136 bytes, SHA256:
+6742d5163b663876751ce601cae6f90d7c39c0e939bc7c6a50b266f2b05a308e.
+Artifact: build/service-exit-v8/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg.
+NOT installed or physically tested. Preserve0.06 and0.07 artifacts unchanged.
+
+Next physical gate: establish console/boot state, rediscover debugger identity
+and all sessions, verify own-title process/slot/started-list state and installed
+package hash before replacement. Adapt the run harness to fingerprint the
+unregister export in the TEST PROCESS before granting its PID gate. Observe
+unregister return, process exit, application slot and BGFT list independently.
+Do not claim success from an unregister return value alone.
+
 ## Stable-title exit experiment (current state)
 
 After cleanup, the preserved accepted0.06 package was hash-checked on the host.
