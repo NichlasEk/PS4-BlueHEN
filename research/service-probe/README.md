@@ -102,3 +102,38 @@ Sources examined:
 [Itemzflow loader](https://github.com/LightningMods/Itemzflow/blob/main/itemz-loader/source/daemon.cpp),
 [daemon entrypoint](https://github.com/LightningMods/Itemzflow/blob/main/itemz-daemon/source/main.cpp),
 [daemon build](https://github.com/LightningMods/Itemzflow/blob/main/itemz-daemon/Makefile).
+
+## Version 0.02 preparation: one-bit launch profile
+
+`main_auth.c` and `build_auth_pkg.py` prepare a separate version00.02 artifact.
+The builder requires private `BLUEHEN_BASELINE_AUTH` and `BLUEHEN_PROFILE_AUTH`
+files of136 bytes. It rejects a profile unless only caps[0] bit62 differs,
+preserves the measured runtime paid, embeds the profile through create-fself's
+`--authinfo`, and checks the exact signature bytes in the output. The CLI paid
+replaces the first profile qword in this builder, so it must match the measured
+profile; it must not silently reuse the original package's paid argument.
+
+The app compares its actual get_authinfo result against the requested profile
+before enabling registration. A mismatch exits with result4. This strict check
+may reject dynamic fields even if the system bit is present; retain evidence
+and examine differences privately before weakening it. The experiment makes
+no in-process credential writes and does not patch a system service.
+
+Four host tests pass for target-bit validation, unrelated changes, size/already-
+system refusal and missing/duplicate/truncated signature records. The PS4-target
+source compiled using a synthetic all-zero header strictly for compile checking;
+that object is not a valid deployable test artifact.
+
+**No version0.02 package exists yet.** Capturing the baseline from the unchanged
+v0.01 app was interrupted during launch. Ticket9 had returned EAGAIN three times;
+the next debugger mapping read timed out before the next result RPC submission.
+Subsequent debugger744 and FTP2121 connections were refused. No baseline/profile
+blob was captured, no registration gate issued, and no new profile installed.
+The console state and launch outcome are unknown; the user was asked what the
+screen shows. Do not resubmit the launch or invent a baseline from another app.
+
+The prior service-v1.log was verified and archived as service-v1-first.log
+before this attempt. New local journals: service-auth-baseline.json and
+launch-BLHN00002-service-auth-baseline.json. If the boot/session survives, inspect
+ticket9 and process/log state before any continuation; after reboot rediscover
+all mappings/RPC state instead of reusing old addresses or tickets.
