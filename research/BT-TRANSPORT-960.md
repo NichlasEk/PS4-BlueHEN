@@ -1,5 +1,21 @@
 # Built-in Bluetooth transport: 9.60 investigation
 
+## 00.13 physical startup reached first presentation
+
+Receiver PID99/task-1 was verified. The hash-matched 00.12 was uninstalled
+(return0), and 00.13 installed on the same BLHN00007 with full package readback
+matching 39682d5cce7c353b293ae1a620eca501d6e0ffaebedfef5d1c1f8273acffe119.
+Own PID102 loaded all three dependencies successfully, initialized SDL, created
+the window/surface/software renderer, and logged UI_READY pad_ok=1 followed by
+UI_FRAME_PRESENTED result=0. It remains open for manual testing. ShellUI BT
+globals stayed -1/-1. Ticket5 was consumed exactly once (0x6000170d).
+
+This establishes successful API startup/presentation on hardware; visible TV
+output, controller navigation, discovery names and selection still require user
+confirmation. No pairing, connection, headset audio or microphone is implemented.
+Private evidence: replace-v12-for-ui-v13.json, service-ui-v13-side-install.json,
+service-ui-v13-run.json/console.log, launch-BLHN00007-device-ui-v13.json.
+
 ## GUI startup investigation: 00.12 exited; 00.13 ready for testing
 
 00.12 was installed with full package readback verification. PID96 reached the
