@@ -52,6 +52,9 @@ static SDL_Renderer *ui_renderer;
 static int ui_pad=-1;
 static uint32_t ui_last_buttons,ui_last_input;
 static int ui_connected;
+static int auto_pulse(FILE *);
+static int auto_begin(FILE *,uint64_t);
+static int auto_finish(FILE *);
 static char ui_status[128]="Tryck TRIANGEL for att soka efter enheter.";
 
 static void ui_box(int x,int y,int w,int h,int r,int g,int b)
@@ -72,6 +75,7 @@ static void ui_text(int x,int y,int scale,const char *label,int r,int g,int b)
 }
 static void ui_frame(void)
 {
+    if(auto_pulse(diag_log)){ui_cancel=1;ui_running=0;}
     SDL_Event event;while(SDL_PollEvent(&event))if(event.type==SDL_QUIT){ui_running=0;ui_cancel=1;}
     OrbisPadData pad={0};
     if(ui_pad>=0 && scePadReadState(ui_pad,&pad)==0) {
@@ -89,7 +93,7 @@ static void ui_frame(void)
         }
     }
     if(ui_pad<0 && SDL_GetTicks()-ui_last_input>300000u){ui_running=0;ui_cancel=1;}
-    if(permit("/data/bluehen/service-ui-v19.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
+    if(permit("/data/bluehen/service-ui-v20.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
     ui_box(0,0,1280,720,10,17,30);ui_box(0,0,1280,5,56,174,245);
     ui_text(55,42,4,"BlueHEN",235,244,255);ui_text(58,104,2,"Bluetooth-enheter",130,170,200);
     ui_text(58,153,2,ui_status,210,225,240);
@@ -220,6 +224,8 @@ static int inquiry(FILE *f)
     return status;
 }
 
+#define BT_AUTO_BEGIN(f,a) auto_begin(f,a)
+#define BT_AUTO_FINISH(f) auto_finish(f)
 #include "bt_connect_probe.h"
 
 static int gui_run(FILE *f)
@@ -333,17 +339,19 @@ static int permit(const char *path,int pid)
     int candidate=-1; int n=fscanf(f,"%d",&candidate); fclose(f);
     return n==1 && candidate==pid;
 }
+#include "bt_automatic.h"
+
 int main(void)
 {
     int (*exit_app)(const char *,const char **)=NULL;
     int pid=(int)getpid(),status=1,system_owned=0;
-    FILE *f=fopen("/data/bluehen/service-ui-v19.log","a");
+    FILE *f=fopen("/data/bluehen/service-ui-v20.log","a");
     if (!f) return 1;
     setvbuf(f,NULL,_IONBF,0);
     diag_log=f;
     struct sw_version version={.size=sizeof(version)};
     int rc=sceKernelGetSystemSwVersion(&version);
-    fprintf(f,"SERVICE_UI_V19 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
+    fprintf(f,"SERVICE_UI_V20 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
     if (rc || (version.version&0xffff0000u)!=0x09600000u) goto done;
     inventory();
     const char *kernels[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
@@ -376,8 +384,10 @@ int main(void)
     /* Local firmware, auth and export checks above apply to every launch.
      * Opening the menu does not start discovery or a connection. */
     fprintf(f,"STARTUP_LOCAL_CHECKS_OK manual_launch=1\n");
+    if(auto_init(f)){fprintf(f,"AUTO_INIT_FAILED\n");status=10;goto done;}
     status=gui_run(f);
  done:
+    auto_shutdown(f);
     fprintf(f,"RESULT result=%d NO_AUDIO\n",status);
     if (system_owned && exit_app) {
         fprintf(f,"EXIT_SYSTEM_BEGIN status=%d\n",status);

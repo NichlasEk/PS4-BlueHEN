@@ -15,6 +15,16 @@ bh_primary_trampoline:
     lock incq bh_state_data+BH_PRIMARY_HITS(%rip)
     cmpq $1, bh_state_data+BH_ENABLED(%rip)
     jne primary_stock
+#ifdef BH_AUTOMATIC
+    /* Preserve RDX as well as flags/RAX: RDTSC writes EDX:EAX. */
+    push %rdx
+    rdtsc
+    shl $32, %rdx
+    or %rdx, %rax
+    pop %rdx
+    cmp bh_state_data+BH_DEADLINE(%rip), %rax
+    jae primary_stock
+#endif
     mov 0x638(%r12), %rax
     testb $4, 0x26(%rax)
     jnz primary_stock
@@ -55,6 +65,16 @@ bh_secondary_trampoline:
     lock incq bh_state_data+BH_SECONDARY_HITS(%rip)
     cmpq $1, bh_state_data+BH_ENABLED(%rip)
     jne secondary_stock
+#ifdef BH_AUTOMATIC
+    /* Preserve RDX as well as flags/RAX: RDTSC writes EDX:EAX. */
+    push %rdx
+    rdtsc
+    shl $32, %rdx
+    or %rdx, %rax
+    pop %rdx
+    cmp bh_state_data+BH_DEADLINE(%rip), %rax
+    jae secondary_stock
+#endif
     mov (%rbx), %r11
     shl $16, %r11
     shr $16, %r11

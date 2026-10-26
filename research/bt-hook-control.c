@@ -124,7 +124,7 @@ int bh_control(void *thread,const uintptr_t *args)
     if(base!=r->base || base<0xffffffff00000000ULL || (base&0x3fff) || !r->owner)return 22;
     uintptr_t state_offset=(uintptr_t)&bh_state_data-(uintptr_t)bh_blob_start;
     size_t size=(uintptr_t)bh_blob_end-(uintptr_t)bh_blob_start;
-    if(state_offset!=0x2000 || size>0x3000 || r->command>BH_DISABLE)return 22;
+    if(state_offset!=BH_STATE_OFFSET || size>BH_STATE_OFFSET+0x1000 || r->command>BH_DISABLE)return 22;
     struct bh_state *s;
     if(r->command==BH_PREPARE){
         if(r->resident || !r->target || r->target>>48)return 22;

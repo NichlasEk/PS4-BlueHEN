@@ -23,7 +23,7 @@ class ConnectProbe(unittest.TestCase):
 struct bt_event {uint8_t type,status,reserved[2];uint32_t value;uint64_t address;};
 struct bt_kevent {uint64_t ident;int16_t filter;uint16_t flags;uint32_t fflags;int64_t data;void *udata;};
 static int mode,active,started,ended,closed,deleted,ui_cancel,ui_running=1,frames;
-static int ui_pair_pending,ui_pair_decision,confirmations,ui_connected,held_frames;
+static int ui_pair_pending,ui_pair_decision,confirmations,ui_connected,held_frames,auto_begins,auto_finishes;
 static char ui_status[128];
 static const uint64_t target=0x123456;
 static int mock_open(const char *p,int flags) {(void)p;assert(flags==(O_RDWR|O_NONBLOCK));return 7;}
@@ -79,17 +79,22 @@ static void ui_frame(void) {frames++;if(ui_connected && ++held_frames==3)ui_canc
 #define close mock_close
 #define usleep mock_sleep
 #define ioctl mock_ioctl
+static int mock_auto_begin(FILE *f,uint64_t a){(void)f;assert(a==target);auto_begins++;return mode==28?-1:0;}
+static int mock_auto_finish(FILE *f){(void)f;auto_finishes++;return mode==29?-1:0;}
+#define BT_AUTO_BEGIN(f,a) mock_auto_begin(f,a)
+#define BT_AUTO_FINISH(f) mock_auto_finish(f)
 #include "bt_connect_probe.h"
 int main(void) {
  FILE *f=tmpfile();assert(f);
- const int expected[]={0,58,59,61,63,64,57,60,67,56,57,0,0,57,71,72,73,73,73,74,64,65,66,64,65,61,0,60};
- for(mode=0;mode<28;mode++) {
-  active=started=ended=closed=deleted=ui_cancel=frames=confirmations=ui_pair_pending=ui_pair_decision=ui_connected=held_frames=0;
+ const int expected[]={0,58,59,61,63,64,57,60,67,56,57,0,0,57,71,72,73,73,73,74,64,65,66,64,65,61,0,60,75,75};
+ for(mode=0;mode<30;mode++) {
+  active=started=ended=closed=deleted=ui_cancel=frames=confirmations=ui_pair_pending=ui_pair_decision=ui_connected=held_frames=auto_begins=auto_finishes=0;
   assert(connection_probe(f,target,0x240404)==expected[mode]);
-  assert(!ui_connected);
+  assert(!ui_connected && auto_finishes==1);
+  assert(auto_begins==(mode!=1 && mode!=9 && mode!=10 && (mode<16 || mode>=19)));
   if(mode==0 || mode==11 || mode==12 || mode==19 || mode==26)assert(held_frames==3);
   if(mode==20 || mode==23)assert(connection_driver_status==4);
-  int owns=mode!=1 && mode!=2 && mode!=9 && mode!=10 && (mode<16 || mode>=19);
+  int owns=mode!=1 && mode!=2 && mode!=28 && mode!=9 && mode!=10 && (mode<16 || mode>=19);
   assert(confirmations==(mode>=12 && mode<=15?1:0));assert(ended==owns);assert(closed==2 && deleted==1);
  }
  started=ended=closed=0;

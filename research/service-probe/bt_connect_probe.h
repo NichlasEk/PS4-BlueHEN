@@ -1,3 +1,7 @@
+#ifndef BT_AUTO_BEGIN
+#define BT_AUTO_BEGIN(f,a) 0
+#define BT_AUTO_FINISH(f) 0
+#endif
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Own-fd diagnostic only. No PIN guessing or audio calls. Confirmation requires controller input.
  * ABI recovered from own 9.60 ShellUI wrappers and managed metadata. */
@@ -95,6 +99,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
     /* Metadata: disconnected=1, connecting=2, connected=3, streaming=5. */
     if(rc!=1){result=58;goto cleanup;}
     if(connection_snapshot(f,fd,address,"before")!=0){result=73;goto cleanup;}
+    if(BT_AUTO_BEGIN(f,address)){result=75;goto cleanup;}
     errno=0;rc=ioctl(fd,0x8008620aUL,&address);
     fprintf(f,"BT_CONNECT_START result=%d errno=%d\n",rc,rc<0?errno:0);
     if(rc!=0){result=59;goto cleanup;}started=1;result=60;
@@ -157,6 +162,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
     }
     if(queue>=0){rc=close(queue);fprintf(f,"BT_CONNECT_QUEUE_CLOSE result=%d\n",rc);if(rc)result=69;}
     if(fd>=0){rc=close(fd);fprintf(f,"BT_CONNECT_FD_CLOSE result=%d\n",rc);if(rc)result=70;}
+    if(BT_AUTO_FINISH(f))result=75;
     fprintf(f,"BT_CONNECT_END result=%d events=%u\n",result,events);
     return result;
 }

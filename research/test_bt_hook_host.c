@@ -42,10 +42,10 @@ int main(int argc,char **argv)
     if(argc==5){
         unsigned char *resident=mmap((void *)UINT64_C(0x10000000000),0x4000,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE,-1,0);
         assert(resident==(void *)UINT64_C(0x10000000000));FILE *blob=fopen(argv[2],"rb");assert(blob);
-        assert(fread(resident,1,0x4000,blob)==0x20e0);fclose(blob);
+        assert(fread(resident,1,0x4000,blob)==BH_STATE_OFFSET+sizeof(struct bh_state));fclose(blob);
         uintptr_t a=strtoull(argv[3],NULL,0),b=strtoull(argv[4],NULL,0);assert(a<0x2000 && b<0x2000);
-        primary=(void *)(resident+a);secondary=(void *)(resident+b);s=(void *)(resident+0x2000);
-        assert(!mprotect(resident,0x2000,PROT_READ|PROT_EXEC));
+        primary=(void *)(resident+a);secondary=(void *)(resident+b);s=(void *)(resident+BH_STATE_OFFSET);
+        assert(!mprotect(resident,BH_STATE_OFFSET,PROT_READ|PROT_EXEC));
     }
     s->primary_next=0x5b2db3;s->primary_accept=0x5b2efa;
     s->secondary_next=0x59f96e;s->secondary_accept=0x59f998;
@@ -72,6 +72,9 @@ int main(int argc,char **argv)
       if(phase==1){branch(p+0xdad,q+0x658,primary,6);branch(q+0x966,q+0x938,secondary,8);}
       if(phase==4){memcpy(p+0xdad,sigp,6);memcpy(q+0x966,sigq,8);memset(q+0x658,0x90,8);memset(q+0x938,0x90,8);}
       s->enabled=phase==2;
+#ifdef BH_AUTOMATIC
+      s->deadline=UINT64_MAX;
+#endif
       assert(!mprotect(p,8192,PROT_READ|PROT_EXEC) && !mprotect(q,4096,PROT_READ|PROT_EXEC));
       for(unsigned i=0;i<16;i++)for(unsigned selected=0;selected<3;selected++){
         const struct scenario *t=&cases[i];unsigned char node[0x1200]={0},rec[0x40]={0};
@@ -88,6 +91,9 @@ int main(int argc,char **argv)
         if(extra){eb=0;if(!(t->state&1) && !(t->flags&0x40000))ea=0;}
         if(a!=ea || b!=eb){fprintf(stderr,"phase=%u case=%s selected=%u actual=%d/%d expected=%d/%d\n",phase,t->name,selected,a,b,ea,eb);return 1;}
         checks+=2;
+#ifdef BH_AUTOMATIC
+        if(phase==2){s->deadline=0;assert(invoke_primary(node)==baseline[i][0] && invoke_secondary(node)==baseline[i][1]);s->deadline=UINT64_MAX;checks+=2;}
+#endif
         /* CPUs already past the overwritten instruction retain a valid stock continuation. */
         assert(resume_primary(node)==baseline[i][0] && resume_secondary(node)==baseline[i][1]);checks+=2;
       }

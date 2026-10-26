@@ -3,6 +3,7 @@
 
 System runtime modules are copied locally and must not be committed.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -14,7 +15,17 @@ import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[2]
 sdk = Path(os.environ.get('OO_PS4_TOOLCHAIN', '/opt/openorbis/OpenOrbis/PS4Toolchain'))
-out = root / 'build/service-ui-v19'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--out', type=Path, default=root / 'build/service-ui-v20')
+out = parser.parse_args().out.resolve()
+auto_dir = Path(os.environ['BLUEHEN_AUTO_BUILD']).resolve()
+auto_manifest = json.loads((auto_dir / 'manifest.json').read_text())
+auto_blob = (auto_dir / 'hook.bin').read_bytes()
+if len(auto_blob) != 0x30f0 or hashlib.sha256(auto_blob).hexdigest() != auto_manifest['sha256']:
+    raise RuntimeError('Automatic hook artifact does not match its manifest')
+expected_header = 'static const unsigned char bh_auto_blob[] __attribute__((aligned(16384)))={' + ','.join(str(x) for x in auto_blob) + '};\n'
+if (auto_dir / 'bt-auto-blob.h').read_text() != expected_header:
+    raise RuntimeError('Embedded hook header differs from tested blob')
 stage = out / 'stage'
 out.mkdir(parents=True, exist_ok=False)
 stage.mkdir()
@@ -40,8 +51,8 @@ def run(*args, **kwargs):
 
 run('clang', '--target=x86_64-pc-freebsd12-elf', '-fPIC', '-O2', '-Wall', '-Wextra',
     '-Werror', '-isysroot', sdk, '-isystem', sdk / 'include',
-    '-DBLUEHEN_LOG="/data/bluehen/service-ui-v19.log"',
-    '-include', header, '-c', root / 'research/service-probe/main_device_ui.c', '-o', out / 'main.o')
+    '-DBLUEHEN_LOG="/data/bluehen/service-ui-v20.log"',
+    '-I', auto_dir, '-include', header, '-c', root / 'research/service-probe/main_device_ui.c', '-o', out / 'main.o')
 run('ld.lld', '-m', 'elf_x86_64', '-pie', '--script=' + str(sdk / 'link.x'),
     '--eh-frame-hdr', '-z', 'max-page-size=0x4000', '-L' + str(sdk / 'lib'),
     sdk / 'lib/crt1.o', out / 'main.o', '-lSDL2', '-lc', '-lkernel', '-lc++', '-lSceUserService', '-lSceVideoOut', '-lSceAudioOut', '-lScePad', '-lSceSysmodule', '-o', out / 'app.elf')
@@ -68,7 +79,7 @@ sfo.unlink(missing_ok=True)
 run(tool, 'sfo_new', sfo)
 for key, value in dict(APP_TYPE=1, ATTRIBUTE=0, DOWNLOAD_DATA_SIZE=0, SYSTEM_VER=0).items():
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Integer', '--maxsize', 4, '--value', value)
-for key, size, value in [('APP_VER', 8, '00.19'), ('VERSION', 8, '01.00'),
+for key, size, value in [('APP_VER', 8, '00.20'), ('VERSION', 8, '01.00'),
                          ('CATEGORY', 4, 'gd'), ('CONTENT_ID', 48, content),
                          ('TITLE_ID', 12, 'BLHN00007'), ('TITLE', 128, 'BlueHEN Bluetooth')]:
     run(tool, 'sfo_setentry', sfo, key, '--type', 'Utf8', '--maxsize', size, '--value', value)
@@ -91,7 +102,7 @@ with (out / 'validation.log').open('w') as log:
     run(tool, 'pkg_validate', '--verbose', pkg, stdout=log, stderr=subprocess.STDOUT)
 if '[OK]' not in (out / 'validation.log').read_text():
     raise RuntimeError('Package validation did not pass')
-manifest = dict(profile_sha256=hashlib.sha256(profile).hexdigest(),
+manifest = dict(version='00.20', automatic_hook_sha256=auto_manifest['sha256'], profile_sha256=hashlib.sha256(profile).hexdigest(),
                 baseline_sha256=hashlib.sha256(baseline).hexdigest(), title_id='BLHN00007', bytes=pkg.stat().st_size,
                 sha256=hashlib.sha256(pkg.read_bytes()).hexdigest(), package=str(pkg))
 (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
