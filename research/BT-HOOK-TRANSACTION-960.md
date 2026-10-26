@@ -164,3 +164,37 @@ On October 26, a separate verification build reproduced the exact accepted
 scenarios, and seven service-probe tests passed. Entry/SMP probes also reproduced
 their previously tested hashes. Original hardware-tested artifacts were preserved.
 Successful pairing, headset audio and microphone transport remain unverified.
+
+## Enabled hardware result, 2026-10-26: admission passes; audio state unresolved
+
+The same-boot resident was independently matched by owner, complete immutable
+code, and all original patch windows before reuse with GUI 0.18. One supervised
+install/enable cycle reached generation 12. During the user's connection attempt
+the primary counter incremented once and primary_allowed became 1. Secondary
+hits/allowed remained zero. Confirmation returned 0, then event 5 reported
+status 0/value 0x38, replacing the preceding unpatched 255/0x802f3403 result.
+
+The user reported that the headphones announced they were connected. The public
+registered-info query subsequently contained the selected headset (previously
+absent), class 0x240404, services 0x200038, flags 0x300. These are pairing/link
+progress and a newly observed registration, not proof of usable PS4 audio.
+
+The PS4 connecting-info query stayed at 6 throughout the post-confirmation wait.
+Local platform metadata maps field 2288/value 6 to STOPPING; connected and
+streaming remain 3 and 5. The exact internal cause and transport state are not
+yet established. GUI 0.18 timed out with result 60 and explicitly disconnected
+the selected headset; cleanup verified state 1 and retained the registration.
+Thus the app did not retain this successful-event link as an audio-ready session.
+Do not reinterpret state 6 as streaming merely to show success in the UI.
+
+Disable/restore completed at generation 14, installed=0/enabled=0. Independent
+readback matched all three full original kernel pages; the GUI remained alive.
+The one 16 KiB resident remains retained until reboot. Private evidence:
+`review/hook-live-20261026/` including supervision, operation journals, final log
+and independent-restoration-check; prior unpatched attempts and exact selected
+target verification are under `review/status255-20261026/`.
+
+Next: determine why the post-admission profile/state path returns STOPPING and
+whether AVDTP setup requires a separate audio consumer. Trace the native state
+query and downstream profile dispatch before adding calls or changing cleanup.
+Headset output and microphone/party routing remain unverified.
