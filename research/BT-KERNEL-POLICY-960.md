@@ -164,6 +164,13 @@ existing-state bit would also skip bookkeeping and is not an implementation.
 
 ## Live installation remains unresolved
 
+Update 2026-10-25: a one-shot kernel-entry probe and an eight-CPU counting
+rendezvous have now succeeded in the running BlueHEN GUI, using a temporary
+kernel-owned executable allocation. See
+[kernel installation prerequisites](KERNEL-INSTALL-PREREQUISITES-960.md) for
+physical evidence and the remaining interrupted-instruction / trampoline-lifetime
+requirements. The paragraph below records the earlier state before those probes.
+
 The pinned debugger's [kernel handler](https://github.com/Pharaoh2k/ps4debug-NG/blob/f941e2d31f83d5e1a3b64690a46787703498171a/debugger/source/kern.c)
 provides base/read/write operations, not a synchronized code-patch transaction.
 Its [kernel read/write implementation](https://github.com/Pharaoh2k/ps4debug-NG/blob/f941e2d31f83d5e1a3b64690a46787703498171a/kdebugger/source/hooks.c)
