@@ -46,6 +46,7 @@ static int mock_ioctl(int fd,unsigned long request,const void *data) {
  if(request==0x80086203UL) {
   if(!started)return mode==1?3:1;
   if(ended)return mode==8?2:1;
+  if(mode==26 || mode==27)return 6;
   if(ui_connected && mode==22)return -1;
   if(ui_connected && mode==24)return 1;
   return mode==0 || mode==11 || mode==19 || mode>=21 || (mode==12 && confirmations)?3:2;
@@ -61,6 +62,7 @@ static int bt_kevent(int q,const struct bt_kevent *c,int n,void *e,int count,voi
 static int next_event(int q,int fd,struct bt_event *e) {
  assert(q==8 && fd==7);
  if(!active){if(mode==9){e->type=1;return 1;}return 0;}
+ if(mode==26){e->address=target;e->type=5;e->status=0;return 1;}
  if(mode==3 || (ui_connected && mode==25))return -1;
  if(ui_connected && mode==21){e->address=target;e->type=6;return 1;}
  if(ui_connected && mode==23){e->address=target;e->type=5;e->status=4;return 1;}
@@ -80,12 +82,12 @@ static void ui_frame(void) {frames++;if(ui_connected && ++held_frames==3)ui_canc
 #include "bt_connect_probe.h"
 int main(void) {
  FILE *f=tmpfile();assert(f);
- const int expected[]={0,58,59,61,63,64,57,60,67,56,57,0,0,57,71,72,73,73,73,74,64,65,66,64,65,61};
- for(mode=0;mode<26;mode++) {
+ const int expected[]={0,58,59,61,63,64,57,60,67,56,57,0,0,57,71,72,73,73,73,74,64,65,66,64,65,61,0,60};
+ for(mode=0;mode<28;mode++) {
   active=started=ended=closed=deleted=ui_cancel=frames=confirmations=ui_pair_pending=ui_pair_decision=ui_connected=held_frames=0;
   assert(connection_probe(f,target,0x240404)==expected[mode]);
   assert(!ui_connected);
-  if(mode==0 || mode==11 || mode==12 || mode==19)assert(held_frames==3);
+  if(mode==0 || mode==11 || mode==12 || mode==19 || mode==26)assert(held_frames==3);
   if(mode==20 || mode==23)assert(connection_driver_status==4);
   int owns=mode!=1 && mode!=2 && mode!=9 && mode!=10 && (mode<16 || mode>=19);
   assert(confirmations==(mode>=12 && mode<=15?1:0));assert(ended==owns);assert(closed==2 && deleted==1);

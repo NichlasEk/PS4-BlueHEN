@@ -198,3 +198,8 @@ Next: determine why the post-admission profile/state path returns STOPPING and
 whether AVDTP setup requires a separate audio consumer. Trace the native state
 query and downstream profile dispatch before adding calls or changing cleanup.
 Headset output and microphone/party routing remain unverified.
+
+Correction after tracing the native query: value 6 does not imply a stalled
+stop operation. For generic audio it also represents an established link with
+no active stream bits. See [state-query analysis](BT-CONNECTION-STATE-960.md).
+The 0.18 timeout was an app completion-condition defect; 0.19 addresses it.

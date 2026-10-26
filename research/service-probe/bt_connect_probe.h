@@ -61,7 +61,7 @@ static int connection_hold(FILE *f,int fd,int queue,uint64_t address)
         if(ticks++%20==0) {
             int state=ioctl(fd,0x80086203UL,&address);
             if(state<0){result=66;break;}
-            if(state!=3 && state!=5){result=65;break;}
+            if(state!=3 && state!=5 && state!=6){result=65;break;}
         }
         ui_frame();usleep(50000);
     }
@@ -73,7 +73,7 @@ static int connection_hold(FILE *f,int fd,int queue,uint64_t address)
 static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
 {
     int fd=-1,queue=-1,attached=0,started=0,result=50,rc;
-    unsigned events=0;int confirmation_replied=0;
+    unsigned events=0;int confirmation_replied=0,connect_succeeded=0;
     ui_cancel=0;ui_connected=0;connection_driver_status=-1;
     if(!address || (device_class&0x1f00u)!=0x400u)return 51;
     fd=open("/dev/bt",O_RDWR|O_NONBLOCK);
@@ -115,6 +115,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
                 if(event.type==5) {
                     fprintf(f,"BT_CONNECT_RESULT status=%u value=0x%08x\n",event.status,event.value);
                     if(event.status){connection_driver_status=event.status;result=64;break;}
+                    connect_succeeded=1;
                 }
                 if(event.type==6){result=65;break;}
             }
@@ -122,7 +123,9 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
         if(tick%20==0 || (rc>0 && event.address==address && event.type==5)) {
             errno=0;int state=ioctl(fd,0x80086203UL,&address);
             fprintf(f,"BT_CONNECT_STATE state=%d errno=%d\n",state,state<0?errno:0);
-            if(state==3 || state==5){result=connection_hold(f,fd,queue,address);break;}
+            /* 9.60 query 0x594bf0 returns 6 for an established audio link
+             * whose stream bits are clear. Require this attempt's success event. */
+            if(state==3 || state==5 || (state==6 && connect_succeeded)){result=connection_hold(f,fd,queue,address);break;}
             if(state<0){result=66;break;}
         }
         ui_frame();if(ui_cancel || !ui_running){result=57;break;}usleep(50000);
