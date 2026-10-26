@@ -356,3 +356,32 @@ See [BT-TRANSPORT-960.md](../BT-TRANSPORT-960.md) for recovered ABI, package
 hash, privacy boundary and remaining hardware validation. BLHN00008 uses
 main_auth_btquery.c and build_auth_btquery_pkg.py with the same private auth
 inputs as0.06. No audio calls or radio-control commands.
+
+## 0.18 connection-session candidate (2026-10-26)
+
+The device UI now keeps a successfully established selected-headset connection
+open until Circle, Options, the stop file, or an observed disconnect/error.
+Discovery and device selection remain unavailable during the session. Cleanup
+disconnects only the selected address that was disconnected before this app
+started its attempt, then closes the owned event queue and descriptor. Existing
+connections are refused and pairing records are retained. This is an interactive
+foreground session, not background reconnection or audio streaming.
+
+The UI reports driver PAGE_TIMEOUT separately from the app's wait timeout and
+other driver errors, and shows connected state only while observed. Neither
+change fixes the unresolved radio timeout or embeds the experimental kernel
+hook. A new boot still needs a separately verified and supervised hook session.
+
+Build with `build_device_ui_pkg.py` and the existing private auth input variables.
+The builder refuses to overwrite an existing output directory. Version 0.17's
+accepted package is retained as the rollback artifact. Version 0.18 uses
+`/data/bluehen/service-ui-v18.log` and the PID-specific `service-ui-v18.stop`.
+
+Candidate: `build/service-ui-v18/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg`,
+6,619,136 bytes, SHA256
+`cb904df4c4a43c2a8fe2e02bfe6b84024190df1fb4e99f14a8323339acca0594`.
+Warnings-as-errors target build, signature/profile checks and PKG validation
+passed. Seven host tests passed, including 26 driver scenarios covering held
+connections, user release, remote disconnect, driver/state read failures,
+foreign-device events, PAGE_TIMEOUT and exact-owned cleanup. Hardware execution,
+pairing, audio and microphone remain unverified for this candidate.

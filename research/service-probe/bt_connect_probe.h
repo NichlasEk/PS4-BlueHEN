@@ -41,11 +41,40 @@ static int connection_confirm(FILE *f,int fd,uint64_t address)
     return rc==0?accept:-1;
 }
 
+/* Driver status is kept separate from local cleanup/transport failures. */
+static int connection_driver_status=-1;
+static int connection_hold(FILE *f,int fd,int queue,uint64_t address)
+{
+    ui_connected=1;
+    snprintf(ui_status,sizeof(ui_status),"Ansluten. CIRKEL kopplar ned. Ljud/mikrofon ar inte aktiverade.");
+    fprintf(f,"BT_CONNECTION_HELD NO_AUDIO\n");
+    int result=0;
+    unsigned ticks=0;
+    while(ui_running && !ui_cancel) {
+        struct bt_event event={0};int rc=next_event(queue,fd,&event);
+        if(rc<0){result=61;break;}
+        if(rc>0 && event.address==address) {
+            fprintf(f,"BT_HELD_EVENT type=%u status=%u TARGET_ONLY\n",event.type,event.status);
+            if(event.type==6){result=65;break;}
+            if(event.type==5 && event.status){connection_driver_status=event.status;result=64;break;}
+        }
+        if(ticks++%20==0) {
+            int state=ioctl(fd,0x80086203UL,&address);
+            if(state<0){result=66;break;}
+            if(state!=3 && state!=5){result=65;break;}
+        }
+        ui_frame();usleep(50000);
+    }
+    ui_connected=0;
+    fprintf(f,"BT_CONNECTION_RELEASE result=%d user_requested=%d\n",result,ui_cancel || !ui_running);
+    return result;
+}
+
 static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
 {
     int fd=-1,queue=-1,attached=0,started=0,result=50,rc;
     unsigned events=0;int confirmation_replied=0;
-    ui_cancel=0;
+    ui_cancel=0;ui_connected=0;connection_driver_status=-1;
     if(!address || (device_class&0x1f00u)!=0x400u)return 51;
     fd=open("/dev/bt",O_RDWR|O_NONBLOCK);
     if(fd<0)goto cleanup;
@@ -85,7 +114,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
                 }
                 if(event.type==5) {
                     fprintf(f,"BT_CONNECT_RESULT status=%u value=0x%08x\n",event.status,event.value);
-                    if(event.status){result=64;break;}
+                    if(event.status){connection_driver_status=event.status;result=64;break;}
                 }
                 if(event.type==6){result=65;break;}
             }
@@ -93,7 +122,7 @@ static int connection_probe(FILE *f,uint64_t address,uint32_t device_class)
         if(tick%20==0 || (rc>0 && event.address==address && event.type==5)) {
             errno=0;int state=ioctl(fd,0x80086203UL,&address);
             fprintf(f,"BT_CONNECT_STATE state=%d errno=%d\n",state,state<0?errno:0);
-            if(state==3 || state==5){result=0;break;}
+            if(state==3 || state==5){result=connection_hold(f,fd,queue,address);break;}
             if(state<0){result=66;break;}
         }
         ui_frame();if(ui_cancel || !ui_running){result=57;break;}usleep(50000);

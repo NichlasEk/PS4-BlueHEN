@@ -51,6 +51,7 @@ static SDL_Window *ui_window;
 static SDL_Renderer *ui_renderer;
 static int ui_pad=-1;
 static uint32_t ui_last_buttons,ui_last_input;
+static int ui_connected;
 static char ui_status[128]="Tryck TRIANGEL for att soka efter enheter.";
 
 static void ui_box(int x,int y,int w,int h,int r,int g,int b)
@@ -88,7 +89,7 @@ static void ui_frame(void)
         }
     }
     if(ui_pad<0 && SDL_GetTicks()-ui_last_input>300000u){ui_running=0;ui_cancel=1;}
-    if(permit("/data/bluehen/service-ui-v17.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
+    if(permit("/data/bluehen/service-ui-v18.stop",(int)getpid())){ui_running=0;ui_cancel=1;}
     ui_box(0,0,1280,720,10,17,30);ui_box(0,0,1280,5,56,174,245);
     ui_text(55,42,4,"BlueHEN",235,244,255);ui_text(58,104,2,"Bluetooth-enheter",130,170,200);
     ui_text(58,153,2,ui_status,210,225,240);
@@ -103,10 +104,10 @@ static void ui_frame(void)
     if(ui_selected>=0 && ui_selected<(int)ui_count) {
         char name[30];snprintf(name,sizeof(name),"%.25s",ui_devices[ui_selected].name);ui_text(875,296,2,name,240,245,255);
     } else ui_text(875,296,2,"Ingen enhet vald",180,195,210);
-    ui_text(875,357,2,"Inte ansluten",245,185,100);
-    ui_text(875,410,2,"FYRKANT: anslutningstest",150,170,190);ui_text(875,439,2,"Kopplar ned efter test.",150,170,190);
+    ui_text(875,357,2,ui_connected?"Ansluten":ui_scanning?"Arbetar...":"Inte ansluten",245,185,100);
+    ui_text(875,410,2,"FYRKANT: anslut",150,170,190);ui_text(875,439,2,"CIRKEL: koppla ned.",150,170,190);
     ui_text(875,495,2,"Ljud / mikrofon:",150,170,190);ui_text(875,524,2,"inte klara annu",150,170,190);
-    ui_text(58,636,2,"UPP/NER  Navigera   X  Valj   TRIANGEL  Sok   FYRKANT  Testa",210,225,240);
+    ui_text(58,636,2,"UPP/NER  Navigera   X  Valj   TRIANGEL  Sok   FYRKANT  Anslut",210,225,240);
     ui_text(58,678,2,ui_scanning?"CIRKEL  Avbryt test/sokning":"CIRKEL / OPTIONS  Avsluta",140,165,190);
     SDL_RenderPresent(ui_renderer);
     int present_rc=SDL_UpdateWindowSurface(ui_window);
@@ -266,10 +267,15 @@ static int gui_run(FILE *f)
         if(ui_want_connect && ui_running) {
             ui_want_connect=0;
             if(ui_selected>=0 && ui_selected<(int)ui_count) {
-                ui_scanning=1;snprintf(ui_status,sizeof(ui_status),"Testar vald ljudenhet. CIRKEL avbryter. Kopplar sedan ned.");
+                ui_scanning=1;snprintf(ui_status,sizeof(ui_status),"Ansluter vald ljudenhet. CIRKEL avbryter.");
                 int rc=connection_probe(f,ui_devices[ui_selected].address,ui_devices[ui_selected].device_class);
                 ui_scanning=0;ui_last_input=SDL_GetTicks();
-                if(rc==0)snprintf(ui_status,sizeof(ui_status),"Anslutning lyckades! Testet kopplade ned. Ljud/mikrofon aterstar.");
+                if(rc==0)snprintf(ui_status,sizeof(ui_status),"Anslutningen avslutad. Ljud/mikrofon ar inte aktiverade.");
+                else if(rc==64 && connection_driver_status==4)snprintf(ui_status,sizeof(ui_status),"Headsetet svarade inte. Aktivera parkopplingslage; stang av mobilens Bluetooth.");
+                else if(rc==64)snprintf(ui_status,sizeof(ui_status),"Bluetooth avvisade anslutningen. Status %d.",connection_driver_status);
+                else if(rc==60)snprintf(ui_status,sizeof(ui_status),"Anslutningen tog for lang tid. Aktivera parkopplingslage och sok igen.");
+                else if(rc==57)snprintf(ui_status,sizeof(ui_status),"Anslutningen avbruten.");
+                else if(rc==65)snprintf(ui_status,sizeof(ui_status),"Headsetet kopplade ned.");
                 else if(rc==51)snprintf(ui_status,sizeof(ui_status),"Valj en ljudenhet for anslutningstestet.");
                 else if(rc==63)snprintf(ui_status,sizeof(ui_status),"Enheten begar inskriven PIN-kod. PIN-inmatning aterstar.");
                 else snprintf(ui_status,sizeof(ui_status),"Anslutningstest resultat %d. Se diagnostikloggen.",rc);
@@ -331,13 +337,13 @@ int main(void)
 {
     int (*exit_app)(const char *,const char **)=NULL;
     int pid=(int)getpid(),status=1,system_owned=0;
-    FILE *f=fopen("/data/bluehen/service-ui-v17.log","a");
+    FILE *f=fopen("/data/bluehen/service-ui-v18.log","a");
     if (!f) return 1;
     setvbuf(f,NULL,_IONBF,0);
     diag_log=f;
     struct sw_version version={.size=sizeof(version)};
     int rc=sceKernelGetSystemSwVersion(&version);
-    fprintf(f,"SERVICE_UI_V17 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
+    fprintf(f,"SERVICE_UI_V18 pid=%d firmware_rc=0x%08x firmware=0x%08x\n",pid,(unsigned)rc,version.version);
     if (rc || (version.version&0xffff0000u)!=0x09600000u) goto done;
     inventory();
     const char *kernels[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
@@ -372,7 +378,7 @@ int main(void)
     fprintf(f,"STARTUP_LOCAL_CHECKS_OK manual_launch=1\n");
     status=gui_run(f);
  done:
-    fprintf(f,"RESULT result=%d NO_AUDIO NO_PAIR NO_CONNECT NO_DISCONNECT\n",status);
+    fprintf(f,"RESULT result=%d NO_AUDIO\n",status);
     if (system_owned && exit_app) {
         fprintf(f,"EXIT_SYSTEM_BEGIN status=%d\n",status);
         rc=exit_app("exit",NULL);
@@ -387,6 +393,6 @@ int main(void)
         fprintf(f,"SYSTEM_UNLOAD_END rc=0x%08x\n",(unsigned)rc);
         if (rc) status=7;
     }
-    fprintf(f,"END result=%d NO_AUDIO NO_PAIR NO_CONNECT NO_DISCONNECT NO_CREDENTIAL_CHANGES\n",status);
+    fprintf(f,"END result=%d NO_AUDIO NO_CREDENTIAL_CHANGES\n",status);
     fclose(f);return status;
 }
