@@ -27,7 +27,7 @@
 #define BH_SECONDARY 0x59f966
 #define BH_PRIMARY_SLOT 0x59f658
 #define BH_SECONDARY_SLOT 0x59f938
-enum { BH_PREPARE=0, BH_INSTALL=1, BH_REMOVE=2, BH_ENABLE=3, BH_DISABLE=4, BH_PULSE=5, BH_INSPECT=6, BH_RETARGET=7, BH_PREFLIGHT=8 };
+enum { BH_PREPARE=0, BH_INSTALL=1, BH_REMOVE=2, BH_ENABLE=3, BH_DISABLE=4, BH_PULSE=5, BH_INSPECT=6, BH_RETARGET=7, BH_PREFLIGHT=8, BH_BOOT=9 };
 struct bh_state {
     uint64_t magic, base, owner, resident;
     uint64_t installed, enabled, target, command, writer, result, cpu_mask, serial_mask;
@@ -44,7 +44,7 @@ struct bh_request {
     uint64_t complete, result, installed, enabled, cpu_mask, serial_mask;
     uint64_t primary_hits, secondary_hits, primary_allowed, secondary_allowed, generation;
 #ifdef BH_AUTOMATIC
-    uint64_t tsc_hz;
+    uint64_t tsc_hz, boot_sec, boot_usec;
 #endif
 };
 _Static_assert(offsetof(struct bh_state,primary_next)==BH_PRIMARY_NEXT,"layout");

@@ -61,19 +61,23 @@ static int auto_finish(FILE *f)
 }
 static int auto_init(FILE *f)
 {
- int (*query)(const int *,unsigned,void *,size_t *,const void *,size_t)=NULL;
  uint64_t (*frequency)(void)=NULL;
  const char *names[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
- for(unsigned i=0;i<6;i++){if(!query)query=resolve(names[i],"sysctl");if(!frequency)frequency=resolve(names[i],"sceKernelGetTscFrequency");}
- if(!query || !frequency){fprintf(f,"AUTO_INIT_ERROR stage=exports\n");return -1;}
- uint64_t boot[2]={0};size_t size=sizeof(boot);int mib[2]={1,21};
- int boot_rc=query(mib,2,boot,&size,NULL,0);
- if(boot_rc || size!=16 || !boot[0] || boot[1]>=1000000){fprintf(f,"AUTO_INIT_ERROR stage=boot_identity rc=%d size=%zu valid=%d\n",boot_rc,size,boot[0]!=0 && boot[1]<1000000);return -1;}
+ for(unsigned i=0;i<6;i++)if(!frequency)frequency=resolve(names[i],"sceKernelGetTscFrequency");
+ if(!frequency){fprintf(f,"AUTO_INIT_ERROR stage=exports\n");return -1;}
+ /* Code is our embedded blob; no retained kernel pointer is used here. */
+ if(sceKernelMmap(NULL,0x4000,3,0x1002,-1,0,&auto_code)){fprintf(f,"AUTO_INIT_ERROR stage=mmap\n");return -1;}
+ memcpy(auto_code,bh_auto_blob,sizeof(bh_auto_blob));
+ if(sceKernelMprotect(auto_code,0x4000,5)){sceKernelMunmap(auto_code,0x4000);auto_code=NULL;fprintf(f,"AUTO_INIT_ERROR stage=mprotect\n");return -1;}
+ auto_request=(struct bh_request){0};
+ if(auto_command(f,BH_BOOT)){fprintf(f,"AUTO_INIT_ERROR stage=boot_identity\n");return -1;}
+ uint64_t boot[2]={auto_request.boot_sec,auto_request.boot_usec};
+ if(!boot[0] || boot[1]>=1000000){fprintf(f,"AUTO_INIT_ERROR stage=boot_value\n");return -1;}
  uint64_t hz=frequency();if(hz<100000000 || hz>10000000000ULL)return -1;
  /* Invariant TSC is required for the resident lease across power states. */
  uint32_t a=0x80000000,b,c=0,d;
  __asm__ volatile("cpuid":"+a"(a),"=b"(b),"+c"(c),"=d"(d));if(a<0x80000007)return -1;
- a=0x80000007;c=0;__asm__ volatile("cpuid":"+a"(a),"=b"(b),"+c"(c),"=d"(d));if(!(d&(1u<<8)))return -1;
+ a=0x80000007;c=0;__asm__ volatile("cpuid":"+a"(a),"=b"(b),"+c"(c),"=d"(d));if(!(d&(1u<<8))){fprintf(f,"AUTO_INIT_ERROR stage=invariant_tsc\n");return -1;}
  unsigned char blob_sha[32];bh_hash(bh_auto_blob,sizeof(bh_auto_blob),blob_sha);
  auto_disk=(struct auto_journal){.magic=BH_MAGIC,.boot_sec=boot[0],.boot_usec=boot[1],.tsc_hz=hz};
  memcpy(auto_disk.blob_sha,blob_sha,32);
@@ -86,12 +90,8 @@ static int auto_init(FILE *f)
    auto_disk=old;
   }
  }else if(errno!=ENOENT)return -1;
- auto_request=(struct bh_request){.base=auto_disk.base,.resident=auto_disk.resident,.owner=auto_disk.owner,.target=auto_disk.target,.tsc_hz=hz};
+ auto_request=(struct bh_request){.base=auto_disk.base,.resident=auto_disk.resident,.owner=auto_disk.owner,.target=auto_disk.target,.tsc_hz=hz,.boot_sec=boot[0],.boot_usec=boot[1]};
  if(!auto_request.owner){FILE *random=fopen("/dev/urandom","rb");if(!random)return -1;int ok=fread(&auto_request.owner,1,8,random)==8;fclose(random);if(!ok || !auto_request.owner)return -1;}
- /* Direct libkernel ABI uses FreeBSD MAP_ANON=0x1000, not libc Linux flags. */
- if(sceKernelMmap(NULL,0x4000,3,0x1002,-1,0,&auto_code))return -1;
- memcpy(auto_code,bh_auto_blob,sizeof(bh_auto_blob));
- if(sceKernelMprotect(auto_code,0x4000,5)){sceKernelMunmap(auto_code,0x4000);auto_code=NULL;return -1;}
  auto_ready=1;
  if(auto_request.resident && auto_finish(f))return -1;
  fprintf(f,"AUTO_READY native=1 lease_seconds=2 resident_reused=%d\n",auto_request.resident!=0);
@@ -123,7 +123,7 @@ static int auto_pulse(FILE *f)
 }
 static void auto_shutdown(FILE *f)
 {
- if(!auto_ready){fprintf(f,"AUTO_SHUTDOWN initialized=0\n");return;}
+ if(!auto_ready){if(auto_code){sceKernelMunmap(auto_code,0x4000);auto_code=NULL;}fprintf(f,"AUTO_SHUTDOWN initialized=0\n");return;}
  int restored=auto_finish(f)==0;
  fprintf(f,"AUTO_SHUTDOWN restored=%d\n",restored);
  if(auto_code){sceKernelMunmap(auto_code,0x4000);auto_code=NULL;}auto_ready=0;

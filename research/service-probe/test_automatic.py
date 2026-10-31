@@ -34,7 +34,8 @@ int32_t sceKernelMprotect(const void *a,size_t n,int p){assert(a && n==0x4000 &&
 int32_t sceKernelMunmap(void *a,size_t n){assert(n==0x4000);free(a);return 0;}
 static int auto_mock_call(struct bh_request *r){
  switch(r->command){
- case BH_PREFLIGHT:break;
+ case BH_BOOT:assert(!r->resident && !r->owner);if(boot_missing)return 2;r->boot_sec=boot_sec;r->boot_usec=123;break;
+ case BH_PREFLIGHT:assert(r->boot_sec==boot_sec);break;
  case BH_PREPARE:{
    FILE *f=fopen(AUTO_JOURNAL,"rb");assert(f);struct auto_journal j;assert(fread(&j,1,sizeof(j),f)==sizeof(j));fclose(f);
    assert(!j.ready && !j.resident && j.owner==r->owner); /* Durable intent precedes allocation. */
@@ -52,7 +53,7 @@ static int auto_mock_call(struct bh_request *r){
 }
 static void reset_app(void){if(auto_code)free(auto_code);auto_code=NULL;auto_ready=auto_active=auto_failed=0;auto_last_pulse=0;memset(&auto_request,0,sizeof(auto_request));memset(&auto_disk,0,sizeof(auto_disk));}
 int main(void){FILE *f=tmpfile();assert(f);
- boot_missing=1;assert(auto_init(f)<0 && !auto_ready && !auto_code && !prepares);reset_app();boot_missing=0;
+ boot_missing=1;assert(auto_init(f)<0 && !auto_ready && !prepares);auto_shutdown(f);assert(!auto_code);reset_app();boot_missing=0;
  assert(auto_init(f)==0 && !auto_request.resident);assert(!auto_begin(f,0x123456));assert(installed && enabled && auto_active && prepares==1);
  struct stat st;assert(!stat(AUTO_JOURNAL,&st) && (st.st_mode&0777)==0600);
  auto_last_pulse=0;assert(!auto_pulse(f));assert(!auto_finish(f) && !installed && !enabled);

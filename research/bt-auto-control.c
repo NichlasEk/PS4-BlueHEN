@@ -37,19 +37,35 @@ static void bh_report(struct bh_request *r,struct bh_state *s)
  r->secondary_hits=s->secondary_hits;r->secondary_allowed=s->secondary_allowed;
  r->cpu_mask=s->cpu_mask;r->serial_mask=s->serial_mask;r->result=0;r->complete=BH_MAGIC;
 }
+static int bh_boot_identity(uintptr_t base,struct bh_request *r)
+{
+ /* The fingerprinted boottime handler reads this timeval. No saved pointers
+  * may be inspected before boot identity has been established. */
+ volatile uint64_t *boot=(void*)(base+0x214c210);
+ uint64_t sec=boot[0],usec=boot[1];
+ if(!sec || usec>=1000000 || sec!=boot[0] || usec!=boot[1])return 16;
+ if(r->command==BH_BOOT){
+  if(r->resident || r->owner || r->target)return 22;
+  r->boot_sec=sec;r->boot_usec=usec;r->result=0;r->complete=BH_MAGIC;return 0;
+ }
+ if(r->boot_sec!=sec || r->boot_usec!=usec || !r->owner || r->tsc_hz<100000000 || r->tsc_hz>10000000000ULL)return 22;
+ return 0;
+}
 int bh_control(void *thread,const uintptr_t *args) HIDDEN;
 int bh_control(void *thread,const uintptr_t *args)
 {
  struct bh_request *r=(void*)args[1];uint32_t lo,hi;
  __asm__ volatile("rdmsr":"=a"(lo),"=d"(hi):"c"(0xc0000082));
  uintptr_t base=(((uint64_t)hi<<32)|lo)-0x1c0;
- if(base<0xffffffff00000000ULL || (base&0x3fff) || !r->owner || r->command>BH_PREFLIGHT)return 22;
+ if(base<0xffffffff00000000ULL || (base&0x3fff) || r->command>BH_BOOT)return 22;
  if(r->base && r->base!=base)return 22;
  r->base=base;
- if(r->tsc_hz<100000000 || r->tsc_hz>10000000000ULL)return 22;
+
  /* Verified syscall 11 ABI and fixed firmware code before allocator/SMP use. */
  if(*(volatile uint32_t*)(base+0x10f92f0+11*0x30)!=2 || *(volatile uint64_t*)(base+0x10f92f0+11*0x30+8)!=base+0x15a6d)return 22;
  if(!bh_fingerprints(base))return 16;
+ if(bh_boot_identity(base,r))return 22;
+ if(r->command==BH_BOOT)return 0;
  struct bh_state *s=NULL;
  if(r->resident){
   if(r->resident<0xffff800000000000ULL || r->resident>UINT64_MAX-0x4000 || (r->resident&0x3fff))return 22;

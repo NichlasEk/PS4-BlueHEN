@@ -26,7 +26,19 @@ int main(int argc,char **argv)
  for(unsigned i=0;i<sizeof(bh_fingerprints_960)/sizeof(bh_fingerprints_960[0]);i++){
   unsigned off=bh_fingerprints_960[i].offset;data[off]^=1;assert(!bh_fingerprints((uintptr_t)data));data[off]^=1;
  }
+ /* Real boot gate, including stale-pointer inputs; no resident dereference. */
+ unsigned char *memory=calloc(1,0x214c220);assert(memory);
+ uint64_t *boot=(void*)(memory+0x214c210);boot[0]=1234567;boot[1]=765432;
+ struct bh_request req={.command=BH_BOOT};
+ assert(!bh_boot_identity((uintptr_t)memory,&req));
+ assert(req.boot_sec==boot[0] && req.boot_usec==boot[1] && req.complete==BH_MAGIC);
+ req.resident=1;assert(bh_boot_identity((uintptr_t)memory,&req));req.resident=0;
+ req.command=BH_INSPECT;req.owner=1;req.tsc_hz=1600000000;
+ req.resident=1;assert(!bh_boot_identity((uintptr_t)memory,&req));
+ boot[0]++;assert(bh_boot_identity((uintptr_t)memory,&req));boot[0]--;
+ boot[1]=1000000;assert(bh_boot_identity((uintptr_t)memory,&req));
+ boot[1]=0;boot[0]=0;assert(bh_boot_identity((uintptr_t)memory,&req));free(memory);
  const unsigned char abc[32]={0xba,0x78,0x16,0xbf,0x8f,0x01,0xcf,0xea,0x41,0x41,0x40,0xde,0x5d,0xae,0x22,0x23,0xb0,0x03,0x61,0xa3,0x96,0x17,0x7a,0x9c,0xb4,0x10,0xff,0x61,0xf2,0x00,0x15,0xad};
  unsigned char hash[32];bh_hash("abc",3,hash);assert(!memcmp(hash,abc,32));
- puts("integrity_passed: SHA256, normalized installed windows, all six foreign-code conflicts");free(data);
+ puts("integrity_passed: SHA256, normalized installed windows, all fingerprint foreign-code conflicts");free(data);
 }

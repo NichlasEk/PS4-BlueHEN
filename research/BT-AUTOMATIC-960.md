@@ -118,3 +118,44 @@ Installed/readback-verified candidate:
 `build/service-ui-v21-startup-fix/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg`,
 6619136 bytes, SHA256
 `23f18737c42f9e5c3f1ae87dcac911f316ca8d31973eaf6e173e773f70ab5f1a`.
+
+## 0.22: native boot identity (2026-10-31)
+
+The firmware's boottime sysctl registration relocation identifies the handler
+at offset `0x1be4e0`. Its native 64-bit output path copies the 16-byte timeval
+at offset `0x214c210`; the 32-bit path reads the same seconds/microseconds.
+The new `BH_BOOT` command fingerprints that entire 0x70-byte handler along with
+the existing code/ABI checks, derives the current kernel base from LSTAR,
+and reads the timeval twice. It requires nonzero seconds and valid microseconds.
+It does not allocate kernel memory, install a hook, or dereference a retained
+resident. Nonzero owner/target/resident inputs are rejected for this command.
+
+Startup executes BH_BOOT from the embedded RX user mapping before loading the
+journal. Every subsequent automatic command compares the current boot timeval
+with the request before dereferencing its resident. A clock adjustment that
+changes this value fails closed; it is not treated as permission to access
+old pointers. The existing incompatible-journal and foreign-code guards still
+apply. Kernel boot time is an operational boot marker, not a cryptographic
+nonce. Reboot/relaunch and clock-adjustment recovery are not hardware accepted.
+
+The exact final blob's BH_BOOT command was executed in the already-running
+BlueHEN 0.21 process through a fresh debugger RPC on physical firmware 9.60.
+It returned success and matched an independent bounded kernel read. Native
+CPUID reported invariant TSC support. Own scratch mappings were unmapped; no
+Bluetooth patch was installed or enabled. This verifies the replacement read
+operation, not the full 0.22 startup or connection lifecycle.
+
+Host validation: 2112 predicate/lease checks, 19 SMP transaction scenarios,
+seven fingerprint ranges, native boot-gate rejection tests (changed boot,
+invalid timeval, retained pointer in bootstrap), eight app suites including
+bootstrap failure and journal/recovery cases, and signed PKG validation.
+
+Candidate `build/service-ui-v22-boot/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg`,
+6619136 bytes, SHA256
+`1a6df95f658548a6494cbc6ce1eca27d52a0bd5b38b0ddb5dc5fbe09dd30a575`.
+Embedded blob SHA256
+`74afe8125f67b6f480452d0850363fdb84d87f7ac03f74e4c73fabcca6da676a`.
+Package staged with full FTP readback, not installed. User unavailable for
+physical test. Next: close BlueHEN, restart Receiver, install after current
+identity/task checks, verify AUTO_READY, then separately test admission and
+restoration. 0.21 remains installed.

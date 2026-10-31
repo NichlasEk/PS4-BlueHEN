@@ -18,7 +18,7 @@ def main():
     if hashlib.sha256(data).hexdigest()!='14ef08101c3716cc774ee2098a01b7278213d92768c7172e99b6309eebe31596':
         p.error('Unrecognized private capture')
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=False);src=Path(__file__).resolve().parent
-    ranges=((0x15a6d,32),(0x52240,0x310),(0x457c50,64),(0x1889d0,0x260),(0x5b2000,8192),(0x59f000,4096))
+    ranges=((0x1be4e0,0x70),(0x15a6d,32),(0x52240,0x310),(0x457c50,64),(0x1889d0,0x260),(0x5b2000,8192),(0x59f000,4096))
     rows=[]
     for off,n in ranges:
         digest=hashlib.sha256(data[off:off+n]).digest()
