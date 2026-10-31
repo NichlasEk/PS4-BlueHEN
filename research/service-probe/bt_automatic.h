@@ -65,9 +65,10 @@ static int auto_init(FILE *f)
  uint64_t (*frequency)(void)=NULL;
  const char *names[]={"libkernel.sprx","libkernel_sys.sprx","libkernel_web.sprx","libkernel","libkernel_sys","libkernel_web"};
  for(unsigned i=0;i<6;i++){if(!query)query=resolve(names[i],"sysctl");if(!frequency)frequency=resolve(names[i],"sceKernelGetTscFrequency");}
- if(!query || !frequency)return -1;
+ if(!query || !frequency){fprintf(f,"AUTO_INIT_ERROR stage=exports\n");return -1;}
  uint64_t boot[2]={0};size_t size=sizeof(boot);int mib[2]={1,21};
- if(query(mib,2,boot,&size,NULL,0) || size!=16 || !boot[0] || boot[1]>=1000000)return -1;
+ int boot_rc=query(mib,2,boot,&size,NULL,0);
+ if(boot_rc || size!=16 || !boot[0] || boot[1]>=1000000){fprintf(f,"AUTO_INIT_ERROR stage=boot_identity rc=%d size=%zu valid=%d\n",boot_rc,size,boot[0]!=0 && boot[1]<1000000);return -1;}
  uint64_t hz=frequency();if(hz<100000000 || hz>10000000000ULL)return -1;
  /* Invariant TSC is required for the resident lease across power states. */
  uint32_t a=0x80000000,b,c=0,d;

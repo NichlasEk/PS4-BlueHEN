@@ -95,3 +95,26 @@ the original pages and inspect retained identity. Separately test a subsequent
 app launch reusing the same resident. Crash-lease behavior is currently host
 verified, not a physical console acceptance result. Do not run an old desktop
 supervisor against this app or delete its journal to force another allocation.
+
+## Physical startup result and 0.21 recovery
+
+0.20 was installed with full package readback on 2026-10-31. Two manual
+launches exited before SDL with AUTO_INIT_FAILED, initialized=0, result=10.
+No automatic journal was created. Fresh Receiver-process calls verified that
+sysctl({1,21}) and sysctlbyname("kern.boottime") return -1/ENOENT on this
+console; TSC frequency was 1593749139 Hz and /dev/urandom opened successfully.
+The Receiver probe is supporting evidence, not an execution of BlueHEN's
+remaining startup steps. No automatic kernel hook was activated.
+
+0.21 logs the boot-identity failure stage and keeps the menu available on
+automatic initialization failure. It blocks connection requests before the
+connection probe, while retaining discovery and normal exit. The existing
+boot/journal safety requirements remain in force. Missing boot identity is
+covered in the host controller test; all eight app suites and package build
+checks passed. Automatic admission remains blocked pending a validated boot
+identity source. Menu behavior still needs physical acceptance.
+
+Installed/readback-verified candidate:
+`build/service-ui-v21-startup-fix/IV0000-BLHN00007_00-BLUEHENSERVICE01.pkg`,
+6619136 bytes, SHA256
+`23f18737c42f9e5c3f1ae87dcac911f316ca8d31973eaf6e173e773f70ab5f1a`.
